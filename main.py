@@ -156,21 +156,18 @@ def print_report(df, results, agreement):
 
 def generate_html_report(df, results, agreement, output_path="report/anomaly_report.html"):
     consensus = {idx: count for idx, count in agreement.items() if count > 4}
-    # Generate all PCA images (per algorithm + consensus)
     os.makedirs('plots', exist_ok=True)
-    # Consensus
     consensus_mask = np.array([agreement.get(i, 0) > 4 for i in range(len(df))])
+
     visualize_pca(df, consensus_mask, "Consensus Outliers (2D)", dim=2, save_path='plots/pca_consensus_2d.png')
     if df.shape[1] >=3:
         visualize_pca(df, consensus_mask, "Consensus Outliers (3D)", dim=3, save_path='plots/pca_consensus_3d.png')
 
-    # Per algorithm PCA plots
     algo_plots = {}
     for algo, mask in results.items():
         visualize_pca(df, mask, f"{algo.upper()} Outliers (2D)", dim=2, save_path=f'plots/pca_{algo}_2d.png')
         algo_plots[algo] = f'../plots/pca_{algo}_2d.png'
 
-    # HTML template with DataTables.js and collapsible sections + CSS styling
     template_str = """
     <!DOCTYPE html>
     <html lang="en">
@@ -371,10 +368,12 @@ def generate_html_report(df, results, agreement, output_path="report/anomaly_rep
     html_out = template.render(results=results, consensus=consensus, algo_plots=algo_plots, df=df)
     with open(output_path, "w") as f:
         f.write(html_out)
+    
+    print(f"\nHTML report saved to anomaly_report.html")
 
-def main(file_path):
-    print(f"Loading dataset from {file_path}...")
-    df = pd.read_csv(file_path)
+def main(file, HTMLreport, ConsoleReport):
+    print(f"Loading dataset from {file}...")
+    df = pd.read_csv(file)
     try:
         df_clean = clean_data(df)
     except ValueError as e:
@@ -383,16 +382,17 @@ def main(file_path):
 
     print("Running outlier detection algorithms...")
     results = run_all_algorithms(df_clean)
-
     agreement = aggregate_outliers(results)
 
-    print_report(df_clean, results, agreement)
-    generate_html_report(df_clean, results, agreement)
-    print(f"\nHTML report saved to anomaly_report.html")
-    print("Open this file in a browser for interactive exploration.")
+    if ConsoleReport: 
+      print_report(df_clean, results, agreement)
+    if HTMLreport:
+      generate_html_report(df_clean, results, agreement)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AnomalyViz: Visual Outlier Detector for CSV data")
     parser.add_argument("--file", type=str, required=True, help="Path to CSV file")
+    parser.add_argument("--NoHtmlReport", action='store_false', required=False, help="Flag to disable HTML report generation")
+    parser.add_argument("--NoConsoleReport", action='store_false', required=False, help="Flag to disable console text report generation")
     args = parser.parse_args()
-    main(args.file)
+    main(args.file, args.NoHtmlReport, args.NoConsoleReport)
