@@ -4,6 +4,9 @@ from sklearn.cluster import DBSCAN
 from sklearn.svm import OneClassSVM
 from sklearn.covariance import EllipticEnvelope, MinCovDet
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import ParameterGrid
+from scipy.spatial.distance import pdist, cdist
+from sklearn.metrics import silhouette_score
 from sklearn.metrics.pairwise import pairwise_distances
 from scipy.stats import zscore
 import numpy as np
@@ -24,16 +27,65 @@ def dbscanAdaptiveOutliers(df):
     return outliers
 
 def isoforestOutliers(df):
-    return IsolationForest(contamination='auto', random_state=42).fit_predict(df) == -1
+    return IsolationForest(contamination='auto').fit_predict(df) == -1
 
 def lofOutliers(df):
     return LocalOutlierFactor(n_neighbors=20).fit_predict(df) == -1
 
 def svmOutliers(df):
-    return OneClassSVM(gamma='auto', nu=0.05).fit_predict(df) == -1
+    scaler = StandardScaler()
+    dataScaled = scaler.fit_transform(df)
+   
+    paramGrid = {
+        'kernel': ['rbf', 'poly', 'sigmoid', 'linear'],
+        'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1.0],
+        'nu': [0.01, 0.05, 0.1, 0.2, 0.3]
+    }
+    grid = list(ParameterGrid(paramGrid))
+   
+    bestScore, bestPredictions = -np.inf, np.zeros(len(df), dtype=bool)
+    for params in grid:
+        model = OneClassSVM(**params)
+        model.fit(dataScaled)
+        predictions = model.predict(dataScaled)
+        decisionScores = model.decision_function(dataScaled)
+            
+        outlier_ratio = np.sum(predictions == -1) / len(predictions)
+        if outlier_ratio < 0.01 or outlier_ratio > 0.5:
+            continue
+        
+        label = (predictions == -1).astype(int)
+        silScore = silhouette_score(dataScaled, label)
+        separation = np.mean(decisionScores[predictions == 1]) - np.mean(decisionScores[predictions == -1])
+        
+        inliers = dataScaled[predictions == 1]
+        if len(inliers) > 1:
+            inlier_distances = pdist(inliers)
+            compactness = -np.mean(inlier_distances)
+        else:
+            compactness = 0
+        
+        outliers = dataScaled[predictions == -1]
+        if len(outliers) > 0 and len(inliers) > 0:
+            distances = cdist(outliers, inliers)
+            isolation = np.mean(np.min(distances, axis=1))
+        else:
+            isolation = 0
+        
+        sil_weight, sep_weight, comp_weight, iso_weight = 1.0, 0.5, 0.3, 0.2
+        total_score = (sil_weight * silScore + 
+                      sep_weight * (separation / np.std(decisionScores)) +
+                      comp_weight * (compactness / np.std(inlier_distances) if len(inliers) > 1 else 0) +
+                      iso_weight * (isolation / np.std(dataScaled.flatten())))
+        
+        if total_score > bestScore:
+            bestScore = total_score
+            bestPredictions = predictions
+    
+    return bestPredictions == -1
 
 def ellipticOutliers(df):
-    return EllipticEnvelope(random_state=42).fit_predict(df) == -1
+    return EllipticEnvelope().fit_predict(df) == -1
 
 def knnOutliers(df):
     distances = NearestNeighbors(n_neighbors=5).fit(df).kneighbors(df)[0][:, -1]
