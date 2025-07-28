@@ -1,5 +1,4 @@
 from collections import defaultdict
-
 from src.algorithms import (
     zscoreOutliers,
     dbscanAdaptiveOutliers,
@@ -13,26 +12,41 @@ from src.algorithms import (
     hbosOutliers
 )
 
-def runAll(df):
+ALGORITHM_MAP = {
+    'zscore': zscoreOutliers,
+    'dbscan': dbscanAdaptiveOutliers,
+    'isoforest': isoforestOutliers,
+    'lof': lofOutliers,
+    'svm': svmOutliers,
+    'elliptic': ellipticOutliers,
+    'knn': knnOutliers,
+    'mcd': mcdOutliers,
+    #'abod': abodOutliers,
+    'hbos': hbosOutliers
+}
+
+def runAll(df, algorithms=None):
     results = {}
-    results['zscore'] = zscoreOutliers(df)
-    results['dbscan'] = dbscanAdaptiveOutliers(df)
-    results['isoforest'] = isoforestOutliers(df)
-    results['lof'] = lofOutliers(df)
-    results['svm'] = svmOutliers(df)
-    results['elliptic'] = ellipticOutliers(df)
-    results['knn'] = knnOutliers(df)
-    results['mcd'] = mcdOutliers(df)
-    #results['abod'] = abodOutliers(df)
-    results['hbos'] = hbosOutliers(df)
+    
+    if not algorithms:
+        algorithms = list(ALGORITHM_MAP.keys())
+    
+    invalid = [alg for alg in algorithms if alg not in ALGORITHM_MAP]
+    if invalid:
+        raise ValueError(f"Invalid algorithm(s): {invalid}. "
+                        f"Available algorithms: {list(ALGORITHM_MAP.keys())}")
+    
+    for algorithm in algorithms:
+        results[algorithm] = ALGORITHM_MAP[algorithm](df)
+    
     return results
 
 def aggregate(results):
     agreement = defaultdict(int)
-
+    
     for method, mask in results.items():
-        for idx, is_outlier in enumerate(mask):
-            if is_outlier:
+        for idx, outlier in enumerate(mask):
+            if outlier:
                 agreement[idx] += 1
-
+                
     return agreement

@@ -2,7 +2,7 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def PCAvisualization(df, outlier_mask, title, dim=2, save_path=None):
+def PCAvisualization(df, outlier_mask, title, dim=2, savePath=None):
     pca = PCA(n_components=dim)
     reduced = pca.fit_transform(df)
     plt.figure(figsize=(10, 8))
@@ -16,7 +16,7 @@ def PCAvisualization(df, outlier_mask, title, dim=2, save_path=None):
     plt.title(title)
     plt.tight_layout()
     
-    if save_path:
-        plt.savefig(save_path)
+    if savePath:
+        plt.savefig(savePath)
 
     plt.close()

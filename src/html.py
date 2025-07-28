@@ -4,21 +4,24 @@ from jinja2 import Template
 
 from src.visualization import PCAvisualization
 
-def generateHTML(df, results, agreement, output_path="report/anomaly_report.html"):
-    consensus = {idx: count for idx, count in agreement.items() if count > 4}
+def generateHTML(df, results, agreement, outputPath="report/AnomalyReport.html"):
+    numAlgos = len(results)
+    conThreshold = max(1, int(np.ceil(numAlgos * 0.5)))
+    consensus = {idx: count for idx, count in agreement.items() if count >= conThreshold}
+    
     os.makedirs('plots', exist_ok=True)
-    consensus_mask = np.array([agreement.get(i, 0) > 4 for i in range(len(df))])
+    conMask = np.array([agreement.get(i, 0) >= conThreshold for i in range(len(df))])
 
-    PCAvisualization(df, consensus_mask, "Consensus Outliers (2D)", dim=2, save_path='plots/pca_consensus_2d.png')
+    PCAvisualization(df, conMask, "Consensus Outliers (2D)", dim=2, savePath='plots/pca_consensus_2d.png')
     if df.shape[1] >=3:
-        PCAvisualization(df, consensus_mask, "Consensus Outliers (3D)", dim=3, save_path='plots/pca_consensus_3d.png')
+        PCAvisualization(df, conMask, "Consensus Outliers (3D)", dim=3, savePath='plots/pca_consensus_3d.png')
 
-    algo_plots = {}
+    outlierPlots = {}
     for algo, mask in results.items():
-        PCAvisualization(df, mask, f"{algo.upper()} Outliers (2D)", dim=2, save_path=f'plots/pca_{algo}_2d.png')
-        algo_plots[algo] = f'../plots/pca_{algo}_2d.png'
+        PCAvisualization(df, mask, f"{algo.upper()} Outliers (2D)", dim=2, savePath=f'plots/pca_{algo}_2d.png')
+        outlierPlots[algo] = f'../plots/pca_{algo}_2d.png'
 
-    template_str = """
+    templateCode = """
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -63,6 +66,17 @@ def generateHTML(df, results, agreement, output_path="report/anomaly_report.html
           margin-top: 1.5em;
           color: var(--primary);
           font-weight: 400;
+        }
+        .consensus-info {
+          text-align: center;
+          background: #e3f2fd;
+          padding: 15px;
+          border-radius: 8px;
+          margin: 20px 0;
+          border-left: 4px solid var(--primary);
+        }
+        .consensus-info strong {
+          color: var(--primary);
         }
         table.dataTable {
           width: 100% !important;
@@ -136,6 +150,11 @@ def generateHTML(df, results, agreement, output_path="report/anomaly_report.html
     <body>
       <div class="container">
         <h1>AnomalyViz: Outlier Detection Report</h1>
+        
+        <div class="consensus-info">
+          <strong>Consensus Settings:</strong> Using {{ numAlgos }} algorithms, requiring {{ conThreshold }}+ to agree 
+          (>={{ "%.0f"|format((conThreshold/numAlgos)*100) }}% consensus)
+        </div>
 
         <button class="collapsible">Algorithm Summary</button>
         <div class="content">
@@ -151,21 +170,28 @@ def generateHTML(df, results, agreement, output_path="report/anomaly_report.html
           </table>
         </div>
 
-        <button class="collapsible">Consensus Outliers (Detected by &gt;3 algorithms)</button>
+        <button class="collapsible">Consensus Outliers ({{ consensus|length }} found)</button>
         <div class="content">
           {% if consensus %}
           <table id="consensusTable" class="display">
             <thead>
-              <tr><th>Row Index</th><th># Algorithms</th></tr>
+              <tr><th>Row Index</th><th># Algorithms</th><th>Consensus %</th></tr>
             </thead>
             <tbody>
               {% for idx, count in consensus.items() %}
-                <tr><td>{{ idx }}</td><td>{{ count }}</td></tr>
+                <tr>
+                  <td>{{ idx }}</td>
+                  <td>{{ count }}/{{ numAlgos }}</td>
+                  <td>{{ "%.0f"|format((count/numAlgos)*100) }}%</td>
+                </tr>
               {% endfor %}
             </tbody>
           </table>
           {% else %}
-            <p>No strong consensus among algorithms.</p>
+            <p>No consensus outliers found with current threshold ({{ conThreshold }}+ algorithms).</p>
+            {% if maxAgreement > 1 %}
+            <p><strong>Highest agreement:</strong> {{ maxAgreement }} algorithms agreed on {{ maxAgreeCount }} point(s)</p>
+            {% endif %}
           {% endif %}
         </div>
 
@@ -178,7 +204,7 @@ def generateHTML(df, results, agreement, output_path="report/anomaly_report.html
           {% endif %}
 
           <h3>Individual Algorithm PCA Plots</h3>
-          {% for algo, plot in algo_plots.items() %}
+          {% for algo, plot in outlierPlots.items() %}
             <h4>{{ algo.upper() }}</h4>
             <img src="{{ plot }}" alt="{{ algo }} PCA Plot" />
           {% endfor %}
@@ -214,9 +240,25 @@ def generateHTML(df, results, agreement, output_path="report/anomaly_report.html
     </html>
     """
 
-    template = Template(template_str)
-    html_out = template.render(results=results, consensus=consensus, algo_plots=algo_plots, df=df)
-    with open(output_path, "w") as f:
-        f.write(html_out)
+    maxAgreement = max(agreement.values()) if agreement else 0
+    maxAgreeCount = len([idx for idx, count in agreement.items() if count == maxAgreement]) if agreement else 0
+
+    template = Template(templateCode)
+    htmlOutput = template.render(
+        results=results, 
+        consensus=consensus, 
+        outlierPlots=outlierPlots, 
+        df=df,
+        numAlgos=numAlgos,
+        conThreshold=conThreshold,
+        maxAgreement=maxAgreement,
+        maxAgreeCount=maxAgreeCount
+    )
     
-    print(f"\nHTML report saved to anomaly_report.html")
+    os.makedirs(os.path.dirname(outputPath), exist_ok=True)
+    with open(outputPath, "w", encoding="utf-8") as f:
+        f.write(htmlOutput)
+    
+    print(f"\nHTML report saved to {outputPath}")
+    print(f"Consensus threshold: {conThreshold}/{numAlgos} algorithms (>={(conThreshold/numAlgos)*100:.0f}%)")
+    print(f"Consensus outliers found: {len(consensus)}")
