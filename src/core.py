@@ -1,3 +1,4 @@
+import pandas as pd
 from collections import defaultdict
 from src.algorithms import (
     zscoreOutliers,
@@ -25,7 +26,7 @@ ALGORITHM_MAP = {
     'hbos': hbosOutliers
 }
 
-def runAll(df, algorithms=None):
+def runAll(df: pd.DataFrame, algorithms: list[str] = None) -> dict[str, pd.Series]:
     results = {}
     
     if not algorithms:
@@ -38,15 +39,15 @@ def runAll(df, algorithms=None):
     
     for algorithm in algorithms:
         results[algorithm] = ALGORITHM_MAP[algorithm](df)
-    
+
     return results
 
-def aggregate(results):
+def aggregate(results) -> defaultdict[int, int]:
     agreement = defaultdict(int)
     
     for method, mask in results.items():
         for idx, outlier in enumerate(mask):
             if outlier:
                 agreement[idx] += 1
-                
+
     return agreement

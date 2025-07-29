@@ -1,3 +1,4 @@
+import pandas as pd
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor, NearestNeighbors
 from sklearn.cluster import DBSCAN
@@ -11,12 +12,13 @@ from sklearn.metrics.pairwise import pairwise_distances
 from scipy.stats import zscore
 import numpy as np
 
-def zscoreOutliers(df, threshold=3):
+def zscoreOutliers(df: pd.DataFrame, threshold: int = 3) -> np.ndarray[bool]:
     return (np.abs(zscore(df)) > threshold).any(axis=1)
 
-def dbscanAdaptiveOutliers(df):
+def dbscanAdaptiveOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
     scaled = StandardScaler().fit_transform(df)
     neigh = NearestNeighbors(n_neighbors=5).fit(scaled)
+
     distances = np.sort(neigh.kneighbors(scaled)[0][:, -1])
     for pct in [90, 95]:
         eps = np.percentile(distances, pct)
@@ -24,15 +26,16 @@ def dbscanAdaptiveOutliers(df):
         outliers = labels == -1
         if np.mean(outliers) <= 0.8:
             return outliers
+        
     return outliers
 
-def isoforestOutliers(df):
+def isoforestOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
     return IsolationForest(contamination='auto').fit_predict(df) == -1
 
-def lofOutliers(df):
+def lofOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
     return LocalOutlierFactor(n_neighbors=20).fit_predict(df) == -1
 
-def svmOutliers(df):
+def svmOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
     scaler = StandardScaler()
     dataScaled = scaler.fit_transform(df)
    
@@ -84,18 +87,18 @@ def svmOutliers(df):
     
     return bestPredictions == -1
 
-def ellipticOutliers(df):
-    return EllipticEnvelope().fit_predict(df) == -1
+def ellipticOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
+    return EllipticEnvelope(contamination=0.05).fit_predict(df) == -1
 
-def knnOutliers(df):
+def knnOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
     distances = NearestNeighbors(n_neighbors=5).fit(df).kneighbors(df)[0][:, -1]
     return distances > np.percentile(distances, 95)
 
-def mcdOutliers(df):
+def mcdOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
     mahal = MinCovDet().fit(df).mahalanobis(df)
-    return mahal > np.percentile(mahal, 97.5)
+    return mahal > np.percentile(mahal, 95)
 
-def abodOutliers(df):
+def abodOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
     X = df.values
     n = len(X)
     outlier_scores = np.zeros(n)
@@ -119,7 +122,7 @@ def abodOutliers(df):
     return outlier_scores <= threshold
 
 
-def hbosOutliers(df):
+def hbosOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
     n_bins = 10
     scores = np.ones(len(df))
 

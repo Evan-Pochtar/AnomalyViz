@@ -1,10 +1,12 @@
 import os
 import numpy as np
 from jinja2 import Template
+import pandas as pd
+from collections import defaultdict
 
 from src.visualization import PCAvisualization
 
-def generateHTML(df, results, agreement, outputPath="report/AnomalyReport.html"):
+def generateHTML(df: pd.DataFrame, results: dict[str, pd.Series], agreement: defaultdict[int, int], outputPath: str = "report/AnomalyReport.html") -> None:
     numAlgos = len(results)
     conThreshold = max(1, int(np.ceil(numAlgos * 0.5)))
     consensus = {idx: count for idx, count in agreement.items() if count >= conThreshold}
@@ -34,8 +36,8 @@ def generateHTML(df, results, agreement, outputPath="report/AnomalyReport.html")
       <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css" />
       <style>
         :root {
-          --primary: #0056b3;
-          --primary-light: #007bff;
+          --primary: #000000;
+          --primary-light: #4C4E52;
           --bg: #f5f8fa;
           --card-bg: #ffffff;
           --text: #333333;
@@ -117,6 +119,7 @@ def generateHTML(df, results, agreement, outputPath="report/AnomalyReport.html")
         }
         .collapsible.active {
           border-color: var(--primary);
+          margin-bottom: 10px;
         }
         .content {
           overflow: hidden;

@@ -1,10 +1,12 @@
 import numpy as np
+import pandas as pd
+from collections import defaultdict
 
-def printReport(results, agreement):
+def printReport(results: dict[str, pd.Series], agreement: defaultdict[int, int]) -> None:
     print("\n===== Outlier Detection Report =====")
     
     for algo, mask in results.items():
-        print(f"\n[Algorithm: {algo.upper()}] Detected {np.sum(mask)} outliers.")
+        print(f"[Algorithm: {algo.upper()}] Detected {np.sum(mask)} outliers.")
     
     numAlgos = len(results)
     conThreshold = max(1, int(np.ceil(numAlgos * 0.5)))
