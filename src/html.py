@@ -135,18 +135,46 @@ def generateHTML(df: pd.DataFrame, results: dict[str, pd.Series], agreement: def
         .content.open {
           padding: 20px;
         }
+        .plot-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 20px;
+          margin: 20px 0;
+        }
+        .plot-grid.single-plot {
+          grid-template-columns: 1fr;
+          max-width: 600px;
+          margin: 20px auto;
+        }
+        .plot-item {
+          text-align: center;
+        }
+        .plot-item h4 {
+          margin: 0 0 15px 0;
+          font-size: 1.1em;
+        }
         img {
           max-width: 100%;
+          height: auto;
           display: block;
-          margin: 20px auto;
+          margin: 0 auto;
           border-radius: 4px;
           box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+          transition: transform 0.2s ease;
+        }
+        img:hover {
+          transform: scale(1.02);
         }
         footer {
           text-align: center;
           font-size: 0.9em;
           color: var(--muted);
           margin: 40px 0 20px;
+        }
+        @media (max-width: 768px) {
+          .plot-grid {
+            grid-template-columns: 1fr;
+          }
         }
       </style>
     </head>
@@ -201,16 +229,37 @@ def generateHTML(df: pd.DataFrame, results: dict[str, pd.Series], agreement: def
         <button class="collapsible">Visualizations</button>
         <div class="content">
           <h3>Consensus Outliers</h3>
-          <img src="{{ '../plots/pca_consensus_2d.png' }}" alt="Consensus PCA 2D" />
-          {% if df.shape[1] >= 3 %}
-          <img src="{{ '../plots/pca_consensus_3d.png' }}" alt="Consensus PCA 3D" />
-          {% endif %}
+          <div class="plot-grid{% if df.shape[1] < 3 %} single-plot{% endif %}">
+            <div class="plot-item">
+              <h4>2D Visualization</h4>
+              <img src="{{ '../plots/pca_consensus_2d.png' }}" alt="Consensus PCA 2D" />
+            </div>
+            {% if df.shape[1] >= 3 %}
+            <div class="plot-item">
+              <h4>3D Visualization</h4>
+              <img src="{{ '../plots/pca_consensus_3d.png' }}" alt="Consensus PCA 3D" />
+            </div>
+            {% endif %}
+          </div>
 
-          <h3>Individual Algorithm PCA Plots</h3>
-          {% for algo, plot in outlierPlots.items() %}
-            <h4>{{ algo.upper() }}</h4>
-            <img src="{{ plot }}" alt="{{ algo }} PCA Plot" />
-          {% endfor %}
+          <h3>Individual Algorithm Results</h3>
+          <div class="plot-grid{% if outlierPlots|length % 2 == 1 %} odd-count{% endif %}">
+            {% for algo, plot in outlierPlots.items() %}
+            <div class="plot-item">
+              <h4>{{ algo.upper() }}</h4>
+              <img src="{{ plot }}" alt="{{ algo }} PCA Plot" />
+            </div>
+            {% endfor %}
+          </div>
+          {% if outlierPlots|length % 2 == 1 %}
+          <style>
+            .plot-grid.odd-count > .plot-item:last-child {
+              grid-column: 1 / -1;
+              max-width: 600px;
+              margin: 0 auto;
+            }
+          </style>
+          {% endif %}
         </div>
 
         <footer>
