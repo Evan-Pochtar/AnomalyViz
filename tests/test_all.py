@@ -5,7 +5,7 @@ from src.data import clean
 def test_runAll():
     df = createSampleDataset(n_samples=500, contamination=0.05)
 
-    results = runAll(clean(df))
+    results = runAll(clean(df), None, 0.05)
     agreement = aggregate(results)
 
     assert isinstance(results, dict)

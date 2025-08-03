@@ -12,30 +12,37 @@ from sklearn.metrics.pairwise import pairwise_distances
 from scipy.stats import zscore
 import numpy as np
 
-def zscoreOutliers(df: pd.DataFrame, threshold: int = 3) -> np.ndarray[bool]:
-    return (np.abs(zscore(df)) > threshold).any(axis=1)
+def zscoreOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
+    z_scores = np.abs(zscore(df))
+    threshold_percentile = (1 - contamination) * 100
+    threshold_value = np.percentile(z_scores.max(axis=1), threshold_percentile)
+    return z_scores.max(axis=1) > threshold_value
 
-def dbscanAdaptiveOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
+def dbscanAdaptiveOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
     scaled = StandardScaler().fit_transform(df)
-    neigh = NearestNeighbors(n_neighbors=5).fit(scaled)
+    neigh = NearestNeighbors(n_neighbors=20).fit(scaled)
 
     distances = np.sort(neigh.kneighbors(scaled)[0][:, -1])
-    for pct in [90, 95]:
+    
+    for pct in [80, 85, 90, 95, 98]:
         eps = np.percentile(distances, pct)
         labels = DBSCAN(eps=eps, min_samples=5).fit(scaled).labels_
         outliers = labels == -1
-        if np.mean(outliers) <= 0.8:
-            return outliers
+        outlier_rate = np.mean(outliers)
         
+        if abs(outlier_rate - contamination) < 0.1 or outlier_rate <= contamination * 2:
+            return outliers
+    
     return outliers
 
-def isoforestOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
-    return IsolationForest(contamination='auto').fit_predict(df) == -1
+def isoforestOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
+    return IsolationForest(contamination=contamination).fit_predict(df) == -1
 
-def lofOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
-    return LocalOutlierFactor(n_neighbors=20).fit_predict(df) == -1
+def lofOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
+    lof = LocalOutlierFactor(n_neighbors=20, contamination=contamination)
+    return lof.fit_predict(df) == -1
 
-def svmOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
+def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
     scaler = StandardScaler()
     dataScaled = scaler.fit_transform(df)
    
@@ -54,10 +61,13 @@ def svmOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
         decisionScores = model.decision_function(dataScaled)
             
         outlier_ratio = np.sum(predictions == -1) / len(predictions)
-        if outlier_ratio < 0.01 or outlier_ratio > 0.5:
+        if outlier_ratio < contamination * 0.1 or outlier_ratio > contamination * 5:
             continue
         
         label = (predictions == -1).astype(int)
+        if len(np.unique(label)) < 2:
+            continue
+            
         silScore = silhouette_score(dataScaled, label)
         separation = np.mean(decisionScores[predictions == 1]) - np.mean(decisionScores[predictions == -1])
         
@@ -75,11 +85,14 @@ def svmOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
         else:
             isolation = 0
         
-        sil_weight, sep_weight, comp_weight, iso_weight = 1.0, 0.5, 0.3, 0.2
+        contamination_penalty = abs(outlier_ratio - contamination) / contamination
+        
+        sil_weight, sep_weight, comp_weight, iso_weight, cont_weight = 1.0, 0.5, 0.3, 0.2, 2.0
         total_score = (sil_weight * silScore + 
                       sep_weight * (separation / np.std(decisionScores)) +
                       comp_weight * (compactness / np.std(inlier_distances) if len(inliers) > 1 else 0) +
-                      iso_weight * (isolation / np.std(dataScaled.flatten())))
+                      iso_weight * (isolation / np.std(dataScaled.flatten())) -
+                      cont_weight * contamination_penalty)
         
         if total_score > bestScore:
             bestScore = total_score
@@ -87,18 +100,22 @@ def svmOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
     
     return bestPredictions == -1
 
-def ellipticOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
-    return EllipticEnvelope(contamination=0.05).fit_predict(df) == -1
+def ellipticOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
+    return EllipticEnvelope(contamination=contamination).fit_predict(df) == -1
 
-def knnOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
+def knnOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
     distances = NearestNeighbors(n_neighbors=5).fit(df).kneighbors(df)[0][:, -1]
-    return distances > np.percentile(distances, 95)
+    threshold_percentile = (1 - contamination) * 100
+    threshold = np.percentile(distances, threshold_percentile)
+    return distances > threshold
 
-def mcdOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
+def mcdOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
     mahal = MinCovDet().fit(df).mahalanobis(df)
-    return mahal > np.percentile(mahal, 95)
+    threshold_percentile = (1 - contamination) * 100
+    threshold = np.percentile(mahal, threshold_percentile)
+    return mahal > threshold
 
-def abodOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
+def abodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
     X = df.values
     n = len(X)
     outlier_scores = np.zeros(n)
@@ -118,11 +135,13 @@ def abodOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
                         angle = np.arccos(cos_angle)
                         angles.append(angle)
         outlier_scores[i] = np.var(angles) if angles else 0
-    threshold = np.percentile(outlier_scores, 5)
+    
+    # Use contamination to determine threshold percentile
+    threshold_percentile = contamination * 100
+    threshold = np.percentile(outlier_scores, threshold_percentile)
     return outlier_scores <= threshold
 
-
-def hbosOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
+def hbosOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
     n_bins = 10
     scores = np.ones(len(df))
 
@@ -132,4 +151,6 @@ def hbosOutliers(df: pd.DataFrame) -> np.ndarray[bool]:
         prob = np.clip(hist[idx], 1e-6, None)
         scores *= 1 / prob
 
-    return scores > np.percentile(scores, 95)
+    threshold_percentile = (1 - contamination) * 100
+    threshold = np.percentile(scores, threshold_percentile)
+    return scores > threshold

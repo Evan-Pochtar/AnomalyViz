@@ -26,7 +26,7 @@ ALGORITHM_MAP = {
     'hbos': hbosOutliers
 }
 
-def runAll(df: pd.DataFrame, algorithms: list[str] = None) -> dict[str, pd.Series]:
+def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float = 0.00) -> dict[str, pd.Series]:
     results = {}
     
     if not algorithms:
@@ -38,7 +38,7 @@ def runAll(df: pd.DataFrame, algorithms: list[str] = None) -> dict[str, pd.Serie
                         f"Available algorithms: {list(ALGORITHM_MAP.keys())}")
     
     for algorithm in algorithms:
-        results[algorithm] = ALGORITHM_MAP[algorithm](df)
+        results[algorithm] = ALGORITHM_MAP[algorithm](df, contamination)
 
     return results
 
