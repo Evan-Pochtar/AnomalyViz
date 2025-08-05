@@ -4,7 +4,7 @@ from sklearn.ensemble import IsolationForest
 
 def estimateOutlierContamination(df: pd.DataFrame) -> float:
     n_samples = len(df)
-    max_rows = 1000000
+    max_rows = 100000
     if n_samples > max_rows:
         df = df.sample(max_rows)
         n_samples = max_rows

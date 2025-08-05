@@ -67,9 +67,9 @@ python main.py --file data.csv --NoHtmlReport
 python main.py --file data.csv --NoConsoleReport
 ```
 
-**Run only specific algorithms with custom reporting:**
+**Run with specific outlier percentage:**
 ```bash
-python main.py --file data.csv --algorithms dbscan svm elliptic --NoConsoleReport
+python main.py --contamination 0.05
 ```
 
 ### Command Line Arguments
@@ -77,8 +77,13 @@ python main.py --file data.csv --algorithms dbscan svm elliptic --NoConsoleRepor
 - `--file` (required): Path to your CSV file
 - `--algorithms` (optional): Space-separated list of algorithms to run
   - Available: `zscore`, `dbscan`, `isoforest`, `lof`, `svm`, `elliptic`, `knn`, `mcd`, `abod`, `hbos`
+- `--contamination`: An estimated percentage of outliers in the dataset
 - `--NoHtmlReport`: Disable HTML report generation
 - `--NoConsoleReport`: Disable console text report
+
+### `estimateOutlierContamination`
+
+If no contamination is set, `estimateOutlierContamination` estimates the proportion of outliers in a dataset using the **Isolation Forest** algorithm with automatic contamination detection. For very large datasets, it samples up to 100,000 rows for efficiency, then calculates the fraction of data points flagged as anomalies. Returns a float between `0.0` and `0.5`.
 
 ## Data Requirements
 
@@ -162,7 +167,6 @@ This project is open source. Please check the LICENSE file for details.
 ## Future Enhancements
 
 - Robust testing to verify correct functionality
-- Automatic outlier contamination solver 
 - Ability to find outliers in text, video, or picture data
 - Additional visualization options
 - Custom algorithm integration framework
