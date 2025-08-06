@@ -31,13 +31,13 @@ def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None):
 
     print("Running outlier detection algorithms...")
     results = runAll(df_clean, algorithms, contamination)
-    agreement = aggregate(results)
+    agreement = aggregate(results['results'])
 
     if ConsoleReport:
         printReport(results, agreement)
     
     if HTMLreport:
-        generateHTML(df_clean, results, agreement)
+        generateHTML(df_clean, results['results'], agreement)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AnomalyViz: Visual Outlier Detector for CSV data")
