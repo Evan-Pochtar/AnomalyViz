@@ -6,9 +6,13 @@ from collections import defaultdict
 
 from src.visualization import PCAvisualization
 
-def generateHTML(df: pd.DataFrame, results: dict[str, pd.Series], agreement: defaultdict[int, int], outputPath: str = "report/AnomalyReport.html") -> None:
+def generateHTML(df: pd.DataFrame, results: dict[str, pd.Series], agreement: defaultdict[int, int], outputPath: str = "report/AnomalyReport.html", consensusThreshold: int = None) -> None:
     numAlgos = len(results)
-    conThreshold = max(1, int(np.ceil(numAlgos * 0.5)))
+    if consensusThreshold is not None:
+        conThreshold = consensusThreshold
+    else:
+        conThreshold = max(1, int(np.ceil(numAlgos * 0.5)))
+    
     consensus = {idx: count for idx, count in agreement.items() if count >= conThreshold}
     
     os.makedirs('plots', exist_ok=True)

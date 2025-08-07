@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict
 
-def printReport(results, agreement: defaultdict[int, int]) -> None:
+def printReport(results, agreement: defaultdict[int, int], consensusThreshold: int = None) -> None:
     print("\n===== Outlier Detection Report =====")
     
     if isinstance(results, dict) and 'results' in results:
@@ -53,7 +53,11 @@ def printReport(results, agreement: defaultdict[int, int]) -> None:
                 print(f"Failed algorithms: {', '.join([alg.upper() for alg in failed_algos])}")
     
     numAlgos = len(algo_results)
-    conThreshold = max(1, int(np.ceil(numAlgos * 0.5)))
+    
+    if consensusThreshold is not None:
+        conThreshold = consensusThreshold
+    else:
+        conThreshold = max(1, int(np.ceil(numAlgos * 0.5)))
     
     print(f"\n[Consensus Settings] Using {numAlgos} algorithms, requiring {conThreshold} or more to agree (≥{(conThreshold/numAlgos)*100:.0f}%)")
     
