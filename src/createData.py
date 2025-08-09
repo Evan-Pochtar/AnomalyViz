@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-def createSampleDataset(n_samples: int = 1000, n_features: int = 10, contamination: float = 0.1, random_state: int = 42) -> pd.DataFrame:
+def createSampleDataset(n_samples: int = 1000, n_features: int = 10, contamination: float = 0.1, random_state: int = 1) -> pd.DataFrame:
     np.random.seed(random_state)
     n_normal = int(n_samples * (1 - contamination))
     n_anomalies = n_samples - n_normal
@@ -13,8 +13,8 @@ def createSampleDataset(n_samples: int = 1000, n_features: int = 10, contaminati
     )
     
     anomaly_data = np.random.multivariate_normal(
-        mean=np.ones(n_features) * 3,  # Shifted mean
-        cov=np.eye(n_features) * 2,    # Larger variance
+        mean=np.ones(n_features) * 3,
+        cov=np.eye(n_features) * 2,
         size=n_anomalies
     )
     

@@ -4,7 +4,7 @@ from jinja2 import Template
 import pandas as pd
 from collections import defaultdict
 
-from src.visualization import PCAvisualization
+from src.visualization import PCAvisualization, createSummaryViz
 
 def generateHTML(df: pd.DataFrame, results: dict[str, pd.Series], agreement: defaultdict[int, int], outputPath: str = "report/AnomalyReport.html", consensusThreshold: int = None) -> None:
     numAlgos = len(results)
@@ -14,18 +14,25 @@ def generateHTML(df: pd.DataFrame, results: dict[str, pd.Series], agreement: def
         conThreshold = max(1, int(np.ceil(numAlgos * 0.5)))
     
     consensus = {idx: count for idx, count in agreement.items() if count >= conThreshold}
-    
+
     os.makedirs('plots', exist_ok=True)
+    print("Generating visualizations...")
+    
     conMask = np.array([agreement.get(i, 0) >= conThreshold for i in range(len(df))])
-
-    PCAvisualization(df, conMask, "Consensus Outliers (2D)", dim=2, savePath='plots/pca_consensus_2d.png')
-    if df.shape[1] >=3:
-        PCAvisualization(df, conMask, "Consensus Outliers (3D)", dim=3, savePath='plots/pca_consensus_3d.png')
-
+    PCAvisualization(df, conMask, "Consensus Outliers (2D)", dim=2, 
+                    savePath='plots/pca_consensus_2d.png', dpi=300)
+    if df.shape[1] >= 3:
+        PCAvisualization(df, conMask, "Consensus Outliers (3D)", dim=3, 
+                        savePath='plots/pca_consensus_3d.png', dpi=300)
+    
     outlierPlots = {}
     for algo, mask in results.items():
-        PCAvisualization(df, mask, f"{algo.upper()} Outliers (2D)", dim=2, savePath=f'plots/pca_{algo}_2d.png')
+        plot_path = f'plots/pca_{algo}_2d.png'
+        PCAvisualization(df, mask, f"{algo.upper()} Outliers Detection", 
+                        dim=2, savePath=plot_path, dpi=300)
         outlierPlots[algo] = f'../plots/pca_{algo}_2d.png'
+
+    createSummaryViz(results, df.shape, 'plots/algorithm_summary.png')
 
     templateCode = """
     <!DOCTYPE html>
@@ -34,267 +41,749 @@ def generateHTML(df: pd.DataFrame, results: dict[str, pd.Series], agreement: def
       <meta charset="utf-8" />
       <title>AnomalyViz Report</title>
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <!-- Google Font -->
-      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
-      <!-- DataTables CSS -->
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
       <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css" />
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
       <style>
         :root {
-          --primary: #000000;
-          --primary-light: #4C4E52;
-          --bg: #f5f8fa;
-          --card-bg: #ffffff;
-          --text: #333333;
-          --muted: #666666;
+          --primary: #60A5FA;
+          --primary-dark: #2563EB;
+          --primary-light: #93C5FD;
+          --secondary: #94A3B8;
+          --accent: #F59E0B;
+          --success: #10B981;
+          --warning: #F59E0B;
+          --danger: #EF4444;
+          --bg-primary: #0B0F1A;
+          --bg-secondary: #1A202C;
+          --bg-tertiary: #2D3748;
+          --text-primary: #F7FAFC;
+          --text-secondary: #E2E8F0;
+          --text-muted: #A0AEC0;
+          --border: #4A5568;
+          --border-light: #2D3748;
+          --shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.8), 0 1px 2px 0 rgba(0, 0, 0, 0.7);
+          --shadow-md: 0 6px 12px -2px rgba(0, 0, 0, 0.8), 0 3px 6px -1px rgba(0, 0, 0, 0.7);
+          --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.8), 0 6px 12px -2px rgba(0, 0, 0, 0.7);
         }
-        * { box-sizing: border-box; }
-        body {
+
+        * { 
+          box-sizing: border-box; 
           margin: 0;
-          font-family: 'Roboto', sans-serif;
-          background: var(--bg);
-          color: var(--text);
+          padding: 0;
+        }
+
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-tertiary) 100%);
+          color: var(--text-primary);
           line-height: 1.6;
+          min-height: 100vh;
         }
+
         .container {
-          max-width: 80%;
+          max-width: 1200px;
           margin: 0 auto;
-          padding: 20px;
+          padding: 2rem;
         }
-        h1 {
+
+        .header {
           text-align: center;
-          margin-bottom: 10px;
-          font-weight: 500;
-          border-bottom: 3px solid var(--primary);
-          padding-bottom: 5px;
+          margin-bottom: 3rem;
+          background: var(--bg-secondary);
+          padding: 2rem;
+          border-radius: 16px;
+          box-shadow: var(--shadow-lg);
+          border: 1px solid var(--border);
         }
-        h2, h3, h4 {
-          text-align: center;
-          margin-top: 1.5em;
-          color: var(--primary);
+
+        .header h1 {
+          font-size: 2.5rem;
+          font-weight: 700;
+          background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin-bottom: 0.5rem;
+        }
+
+        .header .subtitle {
+          color: var(--text-secondary);
+          font-size: 1.1rem;
           font-weight: 400;
         }
-        .consensus-info {
-          text-align: center;
-          background: #e3f2fd;
-          padding: 15px;
-          border-radius: 8px;
-          margin: 20px 0;
-          border-left: 4px solid var(--primary);
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 1.5rem;
+          margin-bottom: 2rem;
         }
-        .consensus-info strong {
-          color: var(--primary);
+
+        .stat-card {
+          background: var(--bg-secondary);
+          border-radius: 12px;
+          padding: 1.5rem;
+          box-shadow: var(--shadow);
+          border: 1px solid var(--border);
+          transition: all 0.3s ease;
         }
-        table.dataTable {
-          width: 100% !important;
-          background: var(--card-bg);
-          border-radius: 4px;
-          overflow: hidden;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+
+        .stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
         }
-        table.dataTable thead th {
-          background: var(--primary-light);
-          color: #fff;
-          text-transform: uppercase;
-          letter-spacing: 0.02em;
+
+        .stat-card .icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.5rem;
+          margin-bottom: 1rem;
         }
-        table.dataTable tbody tr:nth-child(odd) {
-          background: #fafafa;
+
+        .stat-card .consensus .icon { background: linear-gradient(135deg, var(--success), #047857); color: white; }
+        .stat-card .algorithms .icon { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; }
+        .stat-card .dataset .icon { background: linear-gradient(135deg, var(--accent), #D97706); color: white; }
+        .stat-card .threshold .icon { background: linear-gradient(135deg, var(--warning), #D97706); color: white; }
+
+        .stat-value {
+          font-size: 2rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          margin-bottom: 0.25rem;
         }
-        table.dataTable tbody tr:hover {
-          background: #e9f2fd;
-        }
-        .collapsible {
-          display: block;
-          background: var(--card-bg);
-          color: var(--primary);
-          cursor: pointer;
-          padding: 15px 20px;
-          margin: 20px 0 0;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 18px;
+
+        .stat-label {
+          color: var(--text-secondary);
+          font-size: 0.9rem;
           font-weight: 500;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-          transition: background 0.2s, box-shadow 0.2s;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
-        .collapsible:hover {
-          background: #f0f4f8;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+
+        .section {
+          background: var(--bg-secondary);
+          border-radius: 16px;
+          margin-bottom: 2rem;
+          box-shadow: var(--shadow);
+          border: 1px solid var(--border);
+          overflow: hidden;
         }
-        .collapsible.active {
-          border-color: var(--primary);
-          margin-bottom: 10px;
+
+        .section-header {
+          background: linear-gradient(135deg, var(--bg-tertiary) 0%, #1A202C 100%);
+          padding: 1.5rem 2rem;
+          border-bottom: 1px solid var(--border);
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
         }
-        .content {
+
+        .section-header:hover {
+          background: linear-gradient(135deg, #1A202C 0%, var(--bg-primary) 100%);
+        }
+
+        .section-title {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: var(--text-primary);
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .section-toggle {
+          font-size: 1.25rem;
+          color: var(--text-secondary);
+          transition: transform 0.3s ease;
+        }
+
+        .section-header.active .section-toggle {
+          transform: rotate(180deg);
+        }
+
+        .section-content {
           overflow: hidden;
           max-height: 0;
-          transition: max-height 0.3s ease;
-          background: var(--card-bg);
-          border: 1px solid #ddd;
-          border-top: none;
-          border-radius: 0 0 4px 4px;
-          padding: 0 20px;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+          transition: max-height 0.4s ease, padding 0.4s ease;
         }
-        .content.open {
-          padding: 20px;
+
+        .section-content.open {
+          padding: 2rem;
+          max-height: none !important;
         }
+
+        .consensus-info {
+          background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%);
+          border: 1px solid #3B82F6;
+          border-radius: 12px;
+          padding: 1.5rem;
+          margin-bottom: 2rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .consensus-info .icon {
+          width: 48px;
+          height: 48px;
+          background: var(--primary);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 1.25rem;
+        }
+
+        .consensus-info-text {
+          flex: 1;
+        }
+
+        .consensus-info-text strong {
+          color: var(--primary-light);
+          font-weight: 600;
+        }
+
         .plot-grid {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 20px;
-          margin: 20px 0;
+          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+          gap: 2rem;
+          margin: 2rem 0;
         }
-        .plot-grid.single-plot {
-          grid-template-columns: 1fr;
-          max-width: 600px;
-          margin: 20px auto;
-        }
+
         .plot-item {
+          background: var(--bg-secondary);
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: var(--shadow);
+          border: 1px solid var(--border);
+          transition: all 0.3s ease;
+        }
+
+        .plot-item:hover {
+          transform: translateY(-4px);
+          box-shadow: var(--shadow-lg);
+        }
+
+        .plot-header {
+          background: var(--bg-tertiary);
+          padding: 1rem 1.5rem;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .plot-title {
+          font-weight: 600;
+          color: var(--text-primary);
+          font-size: 1.1rem;
+        }
+
+        .plot-image {
+          padding: 1rem;
           text-align: center;
         }
-        .plot-item h4 {
-          margin: 0 0 15px 0;
-          font-size: 1.1em;
-        }
-        img {
+
+        .plot-image img {
           max-width: 100%;
           height: auto;
-          display: block;
-          margin: 0 auto;
-          border-radius: 4px;
-          box-shadow: 0 1px 6px rgba(0,0,0,0.1);
-          transition: transform 0.2s ease;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          transition: transform 0.3s ease;
+          cursor: pointer;
         }
-        img:hover {
+
+        .plot-image img:hover {
           transform: scale(1.02);
         }
+
+        table.dataTable {
+          width: 100% !important;
+          border-collapse: separate;
+          border-spacing: 0;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: var(--shadow);
+          border: 1px solid var(--border);
+          background: var(--bg-secondary);
+        }
+
+        .dataTables_wrapper {
+          background: var(--bg-secondary);
+          color: var(--text-primary);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        .dataTables_length,
+        .dataTables_filter,
+        .dataTables_info,
+        .dataTables_paginate {
+          color: var(--text-primary) !important;
+          margin: 1rem 0;
+        }
+
+        .dataTables_length select,
+        .dataTables_filter input {
+          background: var(--bg-tertiary) !important;
+          color: var(--text-primary) !important;
+          border: 1px solid var(--border) !important;
+          border-radius: 4px;
+          padding: 0.5rem;
+        }
+
+        .dataTables_paginate .paginate_button {
+          background: var(--bg-tertiary) !important;
+          color: var(--text-primary) !important;
+          border: 1px solid var(--border) !important;
+          border-radius: 4px !important;
+          margin: 0 2px;
+        }
+
+        .dataTables_paginate .paginate_button:hover {
+          background: var(--primary) !important;
+          color: white !important;
+          border-color: var(--primary) !important;
+        }
+
+        .dataTables_paginate .paginate_button.current {
+          background: var(--primary) !important;
+          color: white !important;
+          border-color: var(--primary) !important;
+        }
+
+        table.dataTable thead th {
+          background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+          color: white;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          padding: 1rem;
+          border: none;
+        }
+
+        table.dataTable tbody td {
+          padding: 1rem;
+          border-bottom: 1px solid var(--border-light);
+          transition: background-color 0.2s ease;
+          color: var(--text-primary);
+          background: var(--bg-secondary);
+        }
+
+        table.dataTable tbody tr:nth-child(even) td {
+          background: var(--bg-tertiary);
+        }
+
+        table.dataTable tbody tr:hover td {
+          background: linear-gradient(135deg, #1A202C 0%, #2D3748 100%);
+        }
+
+        .algorithm-summary {
+          text-align: center;
+          margin: 2rem 0;
+        }
+
+        .algorithm-summary img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 12px;
+          box-shadow: var(--shadow-md);
+          cursor: pointer;
+        }
+
+        .lightbox {
+          display: none;
+          position: fixed;
+          z-index: 9999;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(0, 0, 0, 0.9);
+          cursor: pointer;
+        }
+
+        .lightbox-content {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          max-width: 90vw;
+          max-height: 90vh;
+          animation: lightboxFadeIn 0.3s ease;
+        }
+
+        .lightbox img {
+          max-width: 100%;
+          max-height: 90vh;
+          width: auto;
+          height: auto;
+          border-radius: 8px;
+          box-shadow: var(--shadow-lg);
+          object-fit: contain;
+        }
+
+        .lightbox-close {
+          position: absolute;
+          top: -40px;
+          right: 0;
+          color: white;
+          font-size: 2rem;
+          font-weight: bold;
+          cursor: pointer;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(0, 0, 0, 0.5);
+          border-radius: 50%;
+          transition: background-color 0.3s ease;
+        }
+
+        .lightbox-close:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+
+        @keyframes lightboxFadeIn {
+          from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+          to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
         footer {
           text-align: center;
-          font-size: 0.9em;
-          color: var(--muted);
-          margin: 40px 0 20px;
+          padding: 2rem;
+          color: var(--text-muted);
+          font-size: 0.9rem;
         }
+
         @media (max-width: 768px) {
+          .container {
+            padding: 1rem;
+          }
+          
+          .header h1 {
+            font-size: 2rem;
+          }
+          
+          .stats-grid {
+            grid-template-columns: 1fr;
+          }
+          
           .plot-grid {
             grid-template-columns: 1fr;
           }
+          
+          .section-content.open {
+            padding: 1rem;
+          }
+
+          .lightbox-content {
+            max-width: 95vw;
+            max-height: 95vh;
+          }
+
+          .lightbox img {
+            max-height: 85vh;
+          }
+        }
+
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .section {
+          animation: fadeInUp 0.6s ease-out;
         }
       </style>
     </head>
     <body>
       <div class="container">
-        <h1>AnomalyViz: Outlier Detection Report</h1>
+        <div class="header">
+          <h1>AnomalyViz</h1>
+          <p class="subtitle">Advanced Outlier Detection & Visualization Report</p>
+        </div>
         
+        <div class="stats-grid">
+          <div class="stat-card consensus">
+            <div class="stat-value">{{ consensus|length }}</div>
+            <div class="stat-label">Consensus Outliers</div>
+          </div>
+          
+          <div class="stat-card algorithms">
+            <div class="stat-value">{{ numAlgos }}</div>
+            <div class="stat-label">Detection Algorithms</div>
+          </div>
+          
+          <div class="stat-card dataset">
+            <div class="stat-value">{{ "{:,}".format(df.shape[0]) }}</div>
+            <div class="stat-label">Data Points</div>
+          </div>
+          
+          <div class="stat-card threshold">
+            <div class="stat-value">{{ "%.0f"|format((conThreshold/numAlgos)*100) }}%</div>
+            <div class="stat-label">Consensus Threshold</div>
+          </div>
+        </div>
+
         <div class="consensus-info">
-          <strong>Consensus Settings:</strong> Using {{ numAlgos }} algorithms, requiring {{ conThreshold }}+ to agree 
-          (>={{ "%.0f"|format((conThreshold/numAlgos)*100) }}% consensus)
+          <div class="consensus-info-text">
+            <strong>Consensus Configuration:</strong> 
+            Using {{ numAlgos }} detection algorithms with {{ conThreshold }}+ agreement required 
+            (≥{{ "%.0f"|format((conThreshold/numAlgos)*100) }}% consensus threshold)
+          </div>
         </div>
 
-        <button class="collapsible">Algorithm Summary</button>
-        <div class="content">
-          <table id="algoTable" class="display">
-            <thead>
-              <tr><th>Algorithm</th><th># Outliers</th></tr>
-            </thead>
-            <tbody>
-              {% for algo, mask in results.items() %}
-                <tr><td>{{ algo.upper() }}</td><td>{{ mask.sum() }}</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-
-        <button class="collapsible">Consensus Outliers ({{ consensus|length }} found)</button>
-        <div class="content">
-          {% if consensus %}
-          <table id="consensusTable" class="display">
-            <thead>
-              <tr><th>Row Index</th><th># Algorithms</th><th>Consensus %</th></tr>
-            </thead>
-            <tbody>
-              {% for idx, count in consensus.items() %}
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">Algorithm Performance Summary</div>
+            <div class="section-toggle"><i class="fas fa-chevron-down"></i></div>
+          </div>
+          <div class="section-content">
+            <div class="algorithm-summary">
+              <img src="../plots/algorithm_summary.png" alt="Algorithm Summary" class="lightbox-image" />
+            </div>
+            <table id="algoTable" class="display">
+              <thead>
                 <tr>
-                  <td>{{ idx }}</td>
-                  <td>{{ count }}/{{ numAlgos }}</td>
-                  <td>{{ "%.0f"|format((count/numAlgos)*100) }}%</td>
+                  <th>Algorithm</th>
+                  <th>Outliers Detected</th>
+                  <th>Detection Rate</th>
                 </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          {% else %}
-            <p>No consensus outliers found with current threshold ({{ conThreshold }}+ algorithms).</p>
-            {% if maxAgreement > 1 %}
-            <p><strong>Highest agreement:</strong> {{ maxAgreement }} algorithms agreed on {{ maxAgreeCount }} point(s)</p>
-            {% endif %}
-          {% endif %}
+              </thead>
+              <tbody>
+                {% for algo, mask in results.items() %}
+                  <tr>
+                    <td><strong>{{ algo.upper() }}</strong></td>
+                    <td>{{ "{:,}".format(mask.sum()) }}</td>
+                    <td>{{ "%.2f"|format((mask.sum() / df.shape[0]) * 100) }}%</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <button class="collapsible">Visualizations</button>
-        <div class="content">
-          <h3>Consensus Outliers</h3>
-          <div class="plot-grid{% if df.shape[1] < 3 %} single-plot{% endif %}">
-            <div class="plot-item">
-              <h4>2D Visualization</h4>
-              <img src="{{ '../plots/pca_consensus_2d.png' }}" alt="Consensus PCA 2D" />
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">
+              Consensus Outliers Analysis
+              <span style="background: var(--success); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; margin-left: 1rem;">
+                {{ consensus|length }} Found
+              </span>
             </div>
-            {% if df.shape[1] >= 3 %}
-            <div class="plot-item">
-              <h4>3D Visualization</h4>
-              <img src="{{ '../plots/pca_consensus_3d.png' }}" alt="Consensus PCA 3D" />
-            </div>
+            <div class="section-toggle"><i class="fas fa-chevron-down"></i></div>
+          </div>
+          <div class="section-content">
+            {% if consensus %}
+              <table id="consensusTable" class="display">
+                <thead>
+                  <tr>
+                    <th>Row Index</th>
+                    <th>Algorithm Agreement</th>
+                    <th>Consensus Percentage</th>
+                    <th>Confidence Level</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for idx, count in consensus.items() %}
+                    <tr>
+                      <td><strong>#{{ idx }}</strong></td>
+                      <td>{{ count }}/{{ numAlgos }}</td>
+                      <td>{{ "%.0f"|format((count/numAlgos)*100) }}%</td>
+                      <td>
+                        {% if (count/numAlgos) >= 0.8 %}
+                          <span style="color: var(--success); font-weight: 600;">Very High</span>
+                        {% elif (count/numAlgos) >= 0.6 %}
+                          <span style="color: var(--warning); font-weight: 600;">High</span>
+                        {% else %}
+                          <span style="color: var(--secondary); font-weight: 600;">Moderate</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% else %}
+              <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <h3>No Consensus Outliers Found</h3>
+                <p>No data points met the consensus threshold of {{ conThreshold }}+ algorithms.</p>
+                {% if maxAgreement > 1 %}
+                  <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-tertiary); border-radius: 8px;">
+                    <strong>Highest Agreement:</strong> {{ maxAgreement }} algorithms agreed on {{ maxAgreeCount }} point(s)
+                  </div>
+                {% endif %}
+              </div>
             {% endif %}
           </div>
+        </div>
 
-          <h3>Individual Algorithm Results</h3>
-          <div class="plot-grid{% if outlierPlots|length % 2 == 1 %} odd-count{% endif %}">
-            {% for algo, plot in outlierPlots.items() %}
-            <div class="plot-item">
-              <h4>{{ algo.upper() }}</h4>
-              <img src="{{ plot }}" alt="{{ algo }} PCA Plot" />
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title">
+              Visual Analysis & Projections
             </div>
-            {% endfor %}
+            <div class="section-toggle"><i class="fas fa-chevron-down"></i></div>
           </div>
-          {% if outlierPlots|length % 2 == 1 %}
-          <style>
-            .plot-grid.odd-count > .plot-item:last-child {
-              grid-column: 1 / -1;
-              max-width: 600px;
-              margin: 0 auto;
-            }
-          </style>
-          {% endif %}
+          <div class="section-content">
+            <h3 style="margin-bottom: 1.5rem; color: var(--text-primary);">Consensus Outliers Visualization</h3>
+            <div class="plot-grid{% if df.shape[1] < 3 %} single-plot{% endif %}">
+              <div class="plot-item">
+                <div class="plot-header">
+                  <div class="plot-title">2D Principal Component Analysis</div>
+                </div>
+                <div class="plot-image">
+                  <img src="../plots/pca_consensus_2d.png" alt="Consensus PCA 2D" class="lightbox-image" />
+                </div>
+              </div>
+              {% if df.shape[1] >= 3 %}
+              <div class="plot-item">
+                <div class="plot-header">
+                  <div class="plot-title">3D Principal Component Analysis</div>
+                </div>
+                <div class="plot-image">
+                  <img src="../plots/pca_consensus_3d.png" alt="Consensus PCA 3D" class="lightbox-image" />
+                </div>
+              </div>
+              {% endif %}
+            </div>
+
+            <h3 style="margin: 2rem 0 1.5rem 0; color: var(--text-primary);">Individual Algorithm Results</h3>
+            <div class="plot-grid">
+              {% for algo, plot in outlierPlots.items() %}
+              <div class="plot-item">
+                <div class="plot-header">
+                  <div class="plot-title">{{ algo.upper() }} Detection</div>
+                </div>
+                <div class="plot-image">
+                  <img src="{{ plot }}" alt="{{ algo }} PCA Analysis" class="lightbox-image" />
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
         </div>
 
         <footer>
-          Generated by AnomalyViz
+          <p>
+            Generated by <strong>AnomalyViz</strong> - Advanced Outlier Detection System
+          </p>
+          <p style="margin-top: 0.5rem; font-size: 0.8rem;">
+            Report generated with {{ numAlgos }} detection algorithms on {{ "{:,}".format(df.shape[0]) }} data points
+          </p>
         </footer>
+      </div>
+
+      <div id="lightbox" class="lightbox">
+        <div class="lightbox-content">
+          <span class="lightbox-close">&times;</span>
+          <img id="lightbox-img" src="" alt="">
+        </div>
       </div>
 
       <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
       <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
       <script>
-        $(function() {
-          $('#algoTable, #consensusTable').DataTable({
+        $(document).ready(function() {
+          $('#algoTable').DataTable({
             paging: false,
             info: false,
-            searching: false
+            searching: false,
+            order: [[1, 'desc']],
+            columnDefs: [
+              {
+                targets: [1, 2],
+                className: 'text-center'
+              }
+            ]
           });
 
-          $('.collapsible').on('click', function(){
-            $(this).toggleClass('active');
-            const $content = $(this).next('.content');
+          $('#consensusTable').DataTable({
+            paging: true,
+            pageLength: 50,
+            lengthMenu: [[25, 50, 100, 500, -1], [25, 50, 100, 500, "All"]],
+            info: true,
+            searching: true,
+            order: [[2, 'desc']],
+            columnDefs: [
+              {
+                targets: [1, 2],
+                className: 'text-center'
+              }
+            ],
+            dom: '<"top"lf>rt<"bottom"ip><"clear">'
+          });
+
+          $('.section-header').on('click', function() {
+            const $header = $(this);
+            const $content = $header.next('.section-content');
+            const $section = $header.parent('.section');
+            
+            $header.toggleClass('active');
+            
             if ($content.hasClass('open')) {
-              $content.removeClass('open').css('max-height', 0);
+              $content.removeClass('open').css('max-height', '0');
             } else {
               $content.addClass('open').css('max-height', $content.prop('scrollHeight') + 'px');
+              setTimeout(function() {
+                if ($content.find('table').length > 0) {
+                  $content.css('max-height', 'none');
+                }
+              }, 400);
+            }
+          });
+
+          $('.section:first-child .section-header').trigger('click');
+
+          $('.lightbox-image').on('click', function() {
+            const src = $(this).attr('src');
+            const alt = $(this).attr('alt');
+            $('#lightbox-img').attr('src', src).attr('alt', alt);
+            $('#lightbox').fadeIn(300);
+          });
+
+          $('#lightbox').on('click', function(e) {
+            if (e.target === this || $(e.target).hasClass('lightbox-close')) {
+              $(this).fadeOut(300);
+            }
+          });
+
+          $(document).on('keydown', function(e) {
+            if (e.key === 'Escape') {
+              $('#lightbox').fadeOut(300);
+            }
+          });
+
+          $('.section').each(function(index) {
+            $(this).css('animation-delay', (index * 0.1) + 's');
+          });
+
+          $('a[href^="#"]').on('click', function(e) {
+            e.preventDefault();
+            const target = $($(this).attr('href'));
+            if (target.length) {
+              $('html, body').animate({
+                scrollTop: target.offset().top - 100
+              }, 500);
             }
           });
         });
       </script>
     </body>
-    </html>
-    """
+    </html>"""
 
     maxAgreement = max(agreement.values()) if agreement else 0
     maxAgreeCount = len([idx for idx, count in agreement.items() if count == maxAgreement]) if agreement else 0
