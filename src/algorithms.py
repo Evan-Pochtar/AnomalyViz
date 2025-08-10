@@ -36,7 +36,7 @@ def dbscanAdaptiveOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray
     return outliers
 
 def isoforestOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
-    return IsolationForest(contamination=contamination).fit_predict(df) == -1
+    return IsolationForest(contamination=contamination, n_jobs=-1).fit_predict(df) == -1
 
 def lofOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
     lof = LocalOutlierFactor(n_neighbors=20, contamination=contamination)
@@ -47,7 +47,7 @@ def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
     dataScaled = scaler.fit_transform(df)
    
     paramGrid = {
-        'kernel': ['rbf', 'poly', 'sigmoid', 'linear'],
+        'kernel': ['rbf', 'poly', 'linear'],
         'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1.0],
         'nu': [0.01, 0.05, 0.1, 0.2, 0.3]
     }
