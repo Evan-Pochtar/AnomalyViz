@@ -8,51 +8,152 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import ParameterGrid
 from scipy.spatial.distance import pdist, cdist
 from sklearn.metrics import silhouette_score
-from sklearn.metrics.pairwise import pairwise_distances
 from scipy.stats import zscore
 import numpy as np
 
-def zscoreOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
-    z_scores = np.abs(zscore(df))
-    threshold_percentile = (1 - contamination) * 100
-    threshold_value = np.percentile(z_scores.max(axis=1), threshold_percentile)
-    return z_scores.max(axis=1) > threshold_value
 
-def dbscanAdaptiveOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
+def zscoreOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using Z-score statistical method.
+    
+    This method identifies outliers by calculating the Z-score (standard deviations 
+    from the mean) for each data point. Points with Z-scores exceeding a threshold
+    based on the contamination parameter are flagged as outliers.
+    
+    Best for: Normally distributed data, simple and fast detection.
+    Limitations: Assumes normal distribution, sensitive to extreme outliers.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+
+    z_scores = np.abs(zscore(df))
+    max_z_scores = z_scores.max(axis=1)
+    threshold_percentile = (1 - contamination) * 100
+    threshold_value = np.percentile(max_z_scores, threshold_percentile)
+    
+    return max_z_scores > threshold_value
+
+
+def dbscanAdaptiveOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using adaptive DBSCAN clustering.
+    
+    This method uses DBSCAN (Density-Based Spatial Clustering) to identify regions
+    of high density. Points that don't belong to any cluster are considered outliers.
+    The eps parameter is adaptively chosen based on k-nearest neighbor distances.
+    
+    Best for: Clusters of varying densities, non-spherical cluster shapes.
+    Limitations: Sensitive to parameter selection, struggles with varying densities.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+
     scaled = StandardScaler().fit_transform(df)
     neigh = NearestNeighbors(n_neighbors=20).fit(scaled)
+    distances, _ = neigh.kneighbors(scaled)
+    distances = np.sort(distances[:, -1])
 
-    distances = np.sort(neigh.kneighbors(scaled)[0][:, -1])
-    
     for pct in [80, 85, 90, 95, 98]:
         eps = np.percentile(distances, pct)
-        labels = DBSCAN(eps=eps, min_samples=5).fit(scaled).labels_
+        dbscan = DBSCAN(eps=eps, min_samples=5)
+        labels = dbscan.fit_predict(scaled)
         outliers = labels == -1
         outlier_rate = np.mean(outliers)
-        
+
         if abs(outlier_rate - contamination) < 0.1 or outlier_rate <= contamination * 2:
             return outliers
-    
+
     return outliers
 
-def isoforestOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
-    return IsolationForest(contamination=contamination, n_jobs=-1).fit_predict(df) == -1
 
-def lofOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
+def isoforestOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using Isolation Forest algorithm.
+    
+    Isolation Forest isolates outliers by randomly selecting features and split values.
+    Outliers are easier to isolate (require fewer splits) than normal points, as they
+    are few and different from the majority of data points.
+    
+    Best for: High-dimensional data, mixed data types, fast execution.
+    Limitations: May struggle with very small datasets or uniform distributions.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+
+    iso_forest = IsolationForest(contamination=contamination, n_jobs=-1)
+    predictions = iso_forest.fit_predict(df)
+    
+    return predictions == -1
+
+
+def lofOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using Local Outlier Factor (LOF).
+    
+    LOF compares the local density of a point with the local densities of its
+    neighbors. Points with substantially lower density than their neighbors
+    are considered outliers.
+    
+    Best for: Data with varying densities, local outlier patterns.
+    Limitations: Sensitive to choice of k, computationally expensive for large datasets.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+
     lof = LocalOutlierFactor(n_neighbors=20, contamination=contamination)
-    return lof.fit_predict(df) == -1
+    predictions = lof.fit_predict(df)
 
-def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
+    return predictions == -1
+
+
+def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using One-Class SVM with comprehensive parameter optimization.
+    
+    One-Class SVM learns a decision function for novelty detection: classifying
+    new data as similar or different from the training set. This implementation
+    performs extensive hyperparameter tuning to find the best model configuration.
+    
+    Best for: Complex decision boundaries, robust performance across data types.
+    Limitations: Computationally expensive due to grid search, many hyperparameters.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+
     scaler = StandardScaler()
     dataScaled = scaler.fit_transform(df)
-   
     paramGrid = {
         'kernel': ['rbf', 'poly', 'linear'],
         'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1.0],
         'nu': [0.01, 0.05, 0.1, 0.2, 0.3]
     }
+
     grid = list(ParameterGrid(paramGrid))
-   
     bestScore, bestPredictions = -np.inf, np.zeros(len(df), dtype=bool)
     for params in grid:
         model = OneClassSVM(**params)
@@ -63,13 +164,12 @@ def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
         outlier_ratio = np.sum(predictions == -1) / len(predictions)
         if outlier_ratio < contamination * 0.1 or outlier_ratio > contamination * 5:
             continue
-        
         label = (predictions == -1).astype(int)
         if len(np.unique(label)) < 2:
             continue
-            
+
         silScore = silhouette_score(dataScaled, label)
-        separation = np.mean(decisionScores[predictions == 1]) - np.mean(decisionScores[predictions == -1])
+        separation = (np.mean(decisionScores[predictions == 1]) - np.mean(decisionScores[predictions == -1]))
         
         inliers = dataScaled[predictions == 1]
         if len(inliers) > 1:
@@ -84,9 +184,8 @@ def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
             isolation = np.mean(np.min(distances, axis=1))
         else:
             isolation = 0
-        
+
         contamination_penalty = abs(outlier_ratio - contamination) / contamination
-        
         sil_weight, sep_weight, comp_weight, iso_weight, cont_weight = 1.0, 0.5, 0.3, 0.2, 2.0
         total_score = (sil_weight * silScore + 
                       sep_weight * (separation / np.std(decisionScores)) +
@@ -100,26 +199,110 @@ def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
     
     return bestPredictions == -1
 
-def ellipticOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
-    return EllipticEnvelope(contamination=contamination).fit_predict(df) == -1
 
-def knnOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
-    distances = NearestNeighbors(n_neighbors=5).fit(df).kneighbors(df)[0][:, -1]
+def ellipticOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using Elliptic Envelope (Robust Covariance Estimation).
+    
+    This method assumes data follows a Gaussian distribution and fits an ellipse
+    around the central data points. Points outside this ellipse are considered
+    outliers. Uses robust covariance estimation to handle some outliers in training.
+    
+    Best for: Gaussian/normal distributed data, multivariate outlier detection.
+    Limitations: Assumes elliptical data distribution, may struggle with non-Gaussian data.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+
+    elliptic_env = EllipticEnvelope(contamination=contamination)
+    predictions = elliptic_env.fit_predict(df)
+    
+    return predictions == -1
+
+
+def knnOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using k-Nearest Neighbors distance method.
+    
+    This method calculates the distance to the k-th nearest neighbor for each point.
+    Points with the largest distances to their k-th neighbor are considered outliers,
+    as they are far from their local neighborhood.
+    
+    Best for: Simple implementation, works well with local density variations.
+    Limitations: Sensitive to choice of k, computationally expensive for large datasets.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+    
+    knn = NearestNeighbors(n_neighbors=5)
+    distances, _ = knn.fit(df).kneighbors(df)
+    kth_distances = distances[:, -1]
     threshold_percentile = (1 - contamination) * 100
-    threshold = np.percentile(distances, threshold_percentile)
-    return distances > threshold
+    threshold = np.percentile(kth_distances, threshold_percentile)
+    
+    return kth_distances > threshold
 
-def mcdOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
-    mahal = MinCovDet().fit(df).mahalanobis(df)
+
+def mcdOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using Minimum Covariance Determinant (MCD).
+    
+    MCD is a robust method for covariance estimation that finds the subset of
+    observations whose covariance matrix has the lowest determinant. Outliers
+    are identified using Mahalanobis distances from this robust estimate.
+    
+    Best for: Multivariate Gaussian data, robust to outliers in training data.
+    Limitations: Assumes elliptical distribution, computationally intensive.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+
+    mcd = MinCovDet().fit(df)
+    mahalanobis_distances = mcd.mahalanobis(df)
     threshold_percentile = (1 - contamination) * 100
-    threshold = np.percentile(mahal, threshold_percentile)
-    return mahal > threshold
+    threshold = np.percentile(mahalanobis_distances, threshold_percentile)
+    
+    return mahalanobis_distances > threshold
 
-def abodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
+
+def abodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using Angle-Based Outlier Detection (ABOD).
+    
+    ABOD considers the variance of angles between difference vectors from a point
+    to all other points. In high-dimensional spaces, outliers have smaller angle
+    variance compared to points in dense regions due to the concentration of measure.
+    
+    Best for: High-dimensional data, points with unusual angular relationships.
+    Limitations: Computationally expensive O(n³), sensitive to curse of dimensionality.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+
     X = df.values
     n = len(X)
     outlier_scores = np.zeros(n)
-    dists = pairwise_distances(X)
+
     for i in range(n):
         angles = []
         for j in range(n):
@@ -134,14 +317,33 @@ def abodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
                         cos_angle = np.clip(cos_angle, -1, 1)
                         angle = np.arccos(cos_angle)
                         angles.append(angle)
+        
         outlier_scores[i] = np.var(angles) if angles else 0
     
-    # Use contamination to determine threshold percentile
     threshold_percentile = contamination * 100
     threshold = np.percentile(outlier_scores, threshold_percentile)
     return outlier_scores <= threshold
 
-def hbosOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
+
+def hbosOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using Histogram-Based Outlier Score (HBOS).
+    
+    HBOS builds histograms for each feature and calculates outlier scores based
+    on the inverse of bin densities. Points in low-density regions (sparse bins)
+    receive higher outlier scores. Assumes feature independence.
+    
+    Best for: Mixed data types, interpretable results, fast computation.
+    Limitations: Assumes feature independence, sensitive to binning strategy.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+
     n_bins = 10
     scores = np.ones(len(df))
 
@@ -153,4 +355,5 @@ def hbosOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray[bool]:
 
     threshold_percentile = (1 - contamination) * 100
     threshold = np.percentile(scores, threshold_percentile)
+    
     return scores > threshold
