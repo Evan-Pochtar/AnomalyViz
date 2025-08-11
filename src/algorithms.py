@@ -58,14 +58,18 @@ def dbscanAdaptiveOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray
         np.ndarray: Boolean array where True indicates an outlier
     """
 
+    n_samples = len(df)
+    n_neighbors = max(20, min(50, int(np.sqrt(n_samples))))
+    min_samples = max(5, min(20, int(n_samples * 0.005)))
+    
     scaled = StandardScaler().fit_transform(df)
-    neigh = NearestNeighbors(n_neighbors=20).fit(scaled)
+    neigh = NearestNeighbors(n_neighbors=n_neighbors).fit(scaled)
     distances, _ = neigh.kneighbors(scaled)
     distances = np.sort(distances[:, -1])
 
     for pct in [80, 85, 90, 95, 98]:
         eps = np.percentile(distances, pct)
-        dbscan = DBSCAN(eps=eps, min_samples=5)
+        dbscan = DBSCAN(eps=eps, min_samples=min_samples)
         labels = dbscan.fit_predict(scaled)
         outliers = labels == -1
         outlier_rate = np.mean(outliers)
@@ -95,7 +99,16 @@ def isoforestOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         np.ndarray: Boolean array where True indicates an outlier
     """
 
-    iso_forest = IsolationForest(contamination=contamination, n_jobs=-1)
+    n_samples = len(df)
+    n_estimators = max(50, min(200, int(n_samples / 10)))
+    max_samples = min(256, max(32, int(n_samples * 0.8)))
+    
+    iso_forest = IsolationForest(
+        contamination=contamination, 
+        n_estimators=n_estimators,
+        max_samples=max_samples,
+        n_jobs=-1
+    )
     predictions = iso_forest.fit_predict(df)
     
     return predictions == -1
@@ -120,11 +133,13 @@ def lofOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         np.ndarray: Boolean array where True indicates an outlier
     """
 
-    lof = LocalOutlierFactor(n_neighbors=20, contamination=contamination)
+    n_samples = len(df)
+    n_neighbors = max(20, min(50, int(np.log(n_samples) * 3)))
+    
+    lof = LocalOutlierFactor(n_neighbors=n_neighbors, contamination=contamination)
     predictions = lof.fit_predict(df)
 
     return predictions == -1
-
 
 def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
@@ -199,7 +214,6 @@ def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     
     return bestPredictions == -1
 
-
 def ellipticOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
     Detect outliers using Elliptic Envelope (Robust Covariance Estimation).
@@ -219,7 +233,13 @@ def ellipticOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         np.ndarray: Boolean array where True indicates an outlier
     """
 
-    elliptic_env = EllipticEnvelope(contamination=contamination)
+    n_samples = len(df)
+    support_fraction = max(0.5, min(0.9, (n_samples - 10) / n_samples))
+    
+    elliptic_env = EllipticEnvelope(
+        contamination=contamination,
+        support_fraction=support_fraction
+    )
     predictions = elliptic_env.fit_predict(df)
     
     return predictions == -1
@@ -244,7 +264,10 @@ def knnOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         np.ndarray: Boolean array where True indicates an outlier
     """
     
-    knn = NearestNeighbors(n_neighbors=5)
+    n_samples = len(df)
+    k = max(20, min(30, int(np.log(n_samples) * 2)))
+    
+    knn = NearestNeighbors(n_neighbors=k)
     distances, _ = knn.fit(df).kneighbors(df)
     kth_distances = distances[:, -1]
     threshold_percentile = (1 - contamination) * 100
@@ -272,7 +295,10 @@ def mcdOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         np.ndarray: Boolean array where True indicates an outlier
     """
 
-    mcd = MinCovDet().fit(df)
+    n_samples = len(df)
+    support_fraction = max(0.5, min(0.9, (n_samples - len(df.columns) - 1) / n_samples))
+    
+    mcd = MinCovDet(support_fraction=support_fraction).fit(df)
     mahalanobis_distances = mcd.mahalanobis(df)
     threshold_percentile = (1 - contamination) * 100
     threshold = np.percentile(mahalanobis_distances, threshold_percentile)
@@ -301,15 +327,21 @@ def abodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
 
     X = df.values
     n = len(X)
-    outlier_scores = np.zeros(n)
-
-    for i in range(n):
-        angles = []
-        for j in range(n):
-            for k in range(j + 1, n):
-                if i != j and i != k:
-                    v1 = X[j] - X[i]
-                    v2 = X[k] - X[i]
+    
+    if n > 500:
+        sample_size = min(200, n // 2)
+        sample_indices = np.random.choice(n, sample_size, replace=False)
+        X_sample = X[sample_indices]
+        n_sample = len(X_sample)
+        
+        outlier_scores = np.zeros(n)
+        
+        for i in range(n):
+            angles = []
+            for j in range(n_sample):
+                for k in range(j + 1, n_sample):
+                    v1 = X_sample[j] - X[i]
+                    v2 = X_sample[k] - X[i]
                     norm_v1 = np.linalg.norm(v1)
                     norm_v2 = np.linalg.norm(v2)
                     if norm_v1 > 1e-10 and norm_v2 > 1e-10:
@@ -317,8 +349,27 @@ def abodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
                         cos_angle = np.clip(cos_angle, -1, 1)
                         angle = np.arccos(cos_angle)
                         angles.append(angle)
-        
-        outlier_scores[i] = np.var(angles) if angles else 0
+            
+            outlier_scores[i] = np.var(angles) if angles else 0
+    else:
+        outlier_scores = np.zeros(n)
+
+        for i in range(n):
+            angles = []
+            for j in range(n):
+                for k in range(j + 1, n):
+                    if i != j and i != k:
+                        v1 = X[j] - X[i]
+                        v2 = X[k] - X[i]
+                        norm_v1 = np.linalg.norm(v1)
+                        norm_v2 = np.linalg.norm(v2)
+                        if norm_v1 > 1e-10 and norm_v2 > 1e-10:
+                            cos_angle = np.dot(v1, v2) / (norm_v1 * norm_v2)
+                            cos_angle = np.clip(cos_angle, -1, 1)
+                            angle = np.arccos(cos_angle)
+                            angles.append(angle)
+            
+            outlier_scores[i] = np.var(angles) if angles else 0
     
     threshold_percentile = contamination * 100
     threshold = np.percentile(outlier_scores, threshold_percentile)
@@ -344,7 +395,9 @@ def hbosOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         np.ndarray: Boolean array where True indicates an outlier
     """
 
-    n_bins = 10
+    n_samples = len(df)
+    n_bins = max(5, min(50, int(np.log2(n_samples)) + 1))
+    
     scores = np.ones(len(df))
 
     for col in df.columns:
