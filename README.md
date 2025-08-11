@@ -6,7 +6,7 @@ A comprehensive anomaly detection tool that applies multiple machine learning al
 
 AnomalyViz is a Python-based outlier detection system that runs multiple anomaly detection algorithms on numerical CSV data and provides consensus results. It generates both console reports and interactive HTML visualizations to help you identify and analyze anomalies in your datasets. This project is in a very early stage and still in concurrent development.
 
-### Key Features
+### Features
 
 - **Multi-Algorithm Consensus**: Runs up to 10 different outlier detection algorithms
 - **Flexible Algorithm Selection**: Choose specific algorithms or run all available methods
@@ -57,14 +57,14 @@ python main.py --file path/to/your/data.csv
 python main.py --file data.csv --algorithms zscore isoforest lof
 ```
 
-**Disable HTML report:**
+**Disable HTML and console report:**
 ```bash
-python main.py --file data.csv --NoHtmlReport
+python main.py --file data.csv --NoHtmlReport --NoConsoleReport
 ```
 
-**Disable console report:**
+**Require a specific amount of consensus algorithms:**
 ```bash
-python main.py --file data.csv --NoConsoleReport
+python main.py --file data.csv --consensusThreshold 5
 ```
 
 **Run with specific outlier percentage:**
@@ -77,9 +77,10 @@ python main.py --contamination 0.05
 - `--file` (required): Path to your CSV file
 - `--algorithms` (optional): Space-separated list of algorithms to run
   - Available: `zscore`, `dbscan`, `isoforest`, `lof`, `svm`, `elliptic`, `knn`, `mcd`, `abod`, `hbos`
-- `--contamination`: An estimated percentage of outliers in the dataset
-- `--NoHtmlReport`: Disable HTML report generation
-- `--NoConsoleReport`: Disable console text report
+- `--contamination` (optional): An estimated percentage of outliers in the dataset
+- `--consensusThreshold` (optional): Number of algorithms that must agree for a consensus outlier.
+- `--NoHtmlReport` (optional): Disable HTML report generation
+- `--NoConsoleReport` (optional): Disable console text report
 
 ### `estimateOutlierContamination`
 

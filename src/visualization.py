@@ -118,8 +118,7 @@ def sampleData(data: np.ndarray, outlier_mask: np.ndarray, target_sample_size: i
     return selected_indices
 
 
-def addConvexHull(ax: plt.Axes, points: np.ndarray, color: str, 
-                  alpha: float = 0.1, linewidth: float = 1) -> None:
+def addConvexHull(ax: plt.Axes, points: np.ndarray, color: str, alpha: float = 0.1, linewidth: float = 1) -> None:
     """
     Add a convex hull overlay to highlight data clusters.
     
@@ -157,8 +156,7 @@ def addConvexHull(ax: plt.Axes, points: np.ndarray, color: str,
         pass
 
 
-def PCAvisualization(df: pd.DataFrame, outlierMask: np.ndarray, title: str, 
-                    dim: int = 2, savePath: Optional[str] = None, dpi: int = 300, 
+def PCAvisualization(df: pd.DataFrame, outlierMask: np.ndarray, title: str, dim: int = 2, savePath: Optional[str] = None, dpi: int = 300, 
                     show_hulls: bool = True, show_density: bool = True) -> None:
     """
     Create publication-ready PCA visualization of outlier detection results.
@@ -279,15 +277,13 @@ def PCAvisualization(df: pd.DataFrame, outlierMask: np.ndarray, title: str,
     
     plt.suptitle(f'{title}{sample_info}', fontsize=16, fontweight='bold', y=0.95)
     if len(inliers) > 0 and len(outliers) > 0:
-        legend = ax.legend(loc='upper right', frameon=True, fancybox=True, 
-                          shadow=True, framealpha=0.9, edgecolor='gray')
+        legend = ax.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, framealpha=0.9, edgecolor='gray')
         legend.get_frame().set_facecolor('white')
 
     plt.tight_layout()
     plt.subplots_adjust(top=0.92)
     if savePath:
-        plt.savefig(savePath, dpi=dpi, bbox_inches='tight', 
-                   facecolor='white', edgecolor='none')
+        plt.savefig(savePath, dpi=dpi, bbox_inches='tight', facecolor='white', edgecolor='none')
     
     plt.close()
 
@@ -332,15 +328,13 @@ def createSummaryViz(algorithm_results: Dict[str, np.ndarray], df_shape: Tuple[i
     
     ax.set_xlabel('Detection Algorithms', fontweight='medium')
     ax.set_ylabel('Number of Outliers Detected', fontweight='medium')
-    ax.set_title(f'Outlier Detection Summary\nDataset: {df_shape[0]:,} samples × {df_shape[1]} features', 
-                fontweight='bold')
+    ax.set_title(f'Outlier Detection Summary\nDataset: {df_shape[0]:,} samples x {df_shape[1]} features', fontweight='bold')
     plt.xticks(rotation=45, ha='right')
     ax.grid(True, alpha=0.3, axis='y')
     ax.set_axisbelow(True)
     plt.tight_layout()
 
     if savePath:
-        plt.savefig(savePath, dpi=300, bbox_inches='tight', 
-                   facecolor='white', edgecolor='none')
+        plt.savefig(savePath, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
     
     plt.close()
