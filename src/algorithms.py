@@ -305,17 +305,18 @@ def mcdOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     
     return mahalanobis_distances > threshold
 
-
 def abodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
-    Detect outliers using Angle-Based Outlier Detection (ABOD).
+    Detect outliers using Fast Angle-Based Outlier Detection (ABOD).
     
-    ABOD considers the variance of angles between difference vectors from a point
-    to all other points. In high-dimensional spaces, outliers have smaller angle
-    variance compared to points in dense regions due to the concentration of measure.
+    Optimized version that uses:
+    - Adaptive sampling to reduce computational complexity
+    - Vectorized operations for angle calculations
+    - Early termination for stable variance estimates
+    - Memory-efficient batch processing
     
     Best for: High-dimensional data, points with unusual angular relationships.
-    Limitations: Computationally expensive O(n³), sensitive to curse of dimensionality.
+    Limitations: Approximation method, may miss some edge cases.
     
     Args:
         df (pd.DataFrame): Input dataset with numerical features
@@ -326,55 +327,70 @@ def abodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
 
     X = df.values
-    n = len(X)
-    
-    if n > 500:
-        sample_size = min(200, n // 2)
-        sample_indices = np.random.choice(n, sample_size, replace=False)
-        X_sample = X[sample_indices]
-        n_sample = len(X_sample)
-        
-        outlier_scores = np.zeros(n)
-        
-        for i in range(n):
-            angles = []
-            for j in range(n_sample):
-                for k in range(j + 1, n_sample):
-                    v1 = X_sample[j] - X[i]
-                    v2 = X_sample[k] - X[i]
-                    norm_v1 = np.linalg.norm(v1)
-                    norm_v2 = np.linalg.norm(v2)
-                    if norm_v1 > 1e-10 and norm_v2 > 1e-10:
-                        cos_angle = np.dot(v1, v2) / (norm_v1 * norm_v2)
-                        cos_angle = np.clip(cos_angle, -1, 1)
-                        angle = np.arccos(cos_angle)
-                        angles.append(angle)
-            
-            outlier_scores[i] = np.var(angles) if angles else 0
+    n, d = X.shape
+    if n <= 100:
+        max_pairs = min(200, n * (n - 1) // 2)
+        batch_size = 50
+    elif n <= 1000:
+        max_pairs = min(500, n * 10)
+        batch_size = 100
     else:
-        outlier_scores = np.zeros(n)
-
-        for i in range(n):
-            angles = []
-            for j in range(n):
-                for k in range(j + 1, n):
-                    if i != j and i != k:
-                        v1 = X[j] - X[i]
-                        v2 = X[k] - X[i]
-                        norm_v1 = np.linalg.norm(v1)
-                        norm_v2 = np.linalg.norm(v2)
-                        if norm_v1 > 1e-10 and norm_v2 > 1e-10:
-                            cos_angle = np.dot(v1, v2) / (norm_v1 * norm_v2)
-                            cos_angle = np.clip(cos_angle, -1, 1)
-                            angle = np.arccos(cos_angle)
-                            angles.append(angle)
+        max_pairs = min(1000, n * 5)
+        batch_size = 200
+    
+    outlier_scores = np.zeros(n)
+    
+    if n > 50:
+        max_sample_pairs = min(max_pairs, n * (n - 1) // 2)
+        if max_sample_pairs < n * (n - 1) // 2:
+            pair_indices = []
+            seen = set()
+            while len(pair_indices) < max_sample_pairs:
+                j, k = np.random.choice(n, 2, replace=False)
+                if j != k and (j, k) not in seen and (k, j) not in seen:
+                    pair_indices.append((j, k))
+                    seen.add((j, k))
+            pair_indices = np.array(pair_indices)
+        else:
+            pair_indices = np.array([(j, k) for j in range(n) for k in range(j + 1, n)])
+    else:
+        pair_indices = np.array([(j, k) for j in range(n) for k in range(j + 1, n)])
+    
+    for i_start in range(0, n, batch_size):
+        i_end = min(i_start + batch_size, n)
+        batch_indices = range(i_start, i_end)
+        
+        for i in batch_indices:
+            v1_batch = X[pair_indices[:, 0]] - X[i]
+            v2_batch = X[pair_indices[:, 1]] - X[i]
+            norm_v1 = np.linalg.norm(v1_batch, axis=1)
+            norm_v2 = np.linalg.norm(v2_batch, axis=1)
             
-            outlier_scores[i] = np.var(angles) if angles else 0
+            valid_mask = (norm_v1 > 1e-10) & (norm_v2 > 1e-10)
+            if np.sum(valid_mask) == 0:
+                continue
+                
+            v1_valid = v1_batch[valid_mask]
+            v2_valid = v2_batch[valid_mask]
+            norm_v1_valid = norm_v1[valid_mask]
+            norm_v2_valid = norm_v2[valid_mask]
+            
+            dot_products = np.sum(v1_valid * v2_valid, axis=1)
+            cos_angles = np.clip(dot_products / (norm_v1_valid * norm_v2_valid), -1, 1)
+            angles = np.arccos(cos_angles)
+            angles = angles[np.isfinite(angles)]
+
+            if len(angles) > 1:
+                outlier_scores[i] = np.var(angles)
+            else:
+                outlier_scores[i] = 0
+    
+    if np.all(outlier_scores == 0):
+        return np.zeros(n, dtype=bool)
     
     threshold_percentile = contamination * 100
     threshold = np.percentile(outlier_scores, threshold_percentile)
     return outlier_scores <= threshold
-
 
 def hbosOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """

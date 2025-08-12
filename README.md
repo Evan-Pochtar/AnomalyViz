@@ -148,7 +148,7 @@ createSampleDataset(n_samples=500, contamination=0.05)
 
 ## Performance Considerations
 
-- **Dataset Size**: Algorithms scale differently; ABOD may be slow on large datasets (>10k rows)
+- **Dataset Size**: Algorithms scale differently; SVM may be slow on large datasets (>10k rows)
 - **Memory Usage**: SVM grid search is memory-intensive for large datasets
 - **Processing Time**: Running all algorithms may take several minutes on large datasets
 

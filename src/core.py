@@ -24,7 +24,7 @@ ALGORITHM_MAP = {
     'elliptic': ellipticOutliers,
     'knn': knnOutliers,
     'mcd': mcdOutliers,
-    #'abod': abodOutliers,
+    'abod': abodOutliers,
     'hbos': hbosOutliers
 }
 
