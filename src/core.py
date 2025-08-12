@@ -11,7 +11,7 @@ from src.algorithms import (
     ellipticOutliers,
     knnOutliers,
     mcdOutliers,
-    copodOutliers,  # Replace abodOutliers with copodOutliers
+    copodOutliers,
     hbosOutliers
 )
 
@@ -24,7 +24,7 @@ ALGORITHM_MAP = {
     'elliptic': ellipticOutliers,
     'knn': knnOutliers,
     'mcd': mcdOutliers,
-    'copod': copodOutliers,  # Replace 'abod': abodOutliers with copod
+    'copod': copodOutliers,
     'hbos': hbosOutliers
 }
 

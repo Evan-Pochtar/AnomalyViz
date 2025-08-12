@@ -8,9 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import ParameterGrid
 from scipy.spatial.distance import pdist, cdist
 from sklearn.metrics import silhouette_score
-from scipy.stats import zscore
 import numpy as np
-
 
 def zscoreOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
@@ -30,14 +28,37 @@ def zscoreOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     Returns:
         np.ndarray: Boolean array where True indicates an outlier
     """
+    data_array = df.values
+    n_samples, n_features = data_array.shape
 
-    z_scores = np.abs(zscore(df))
-    max_z_scores = z_scores.max(axis=1)
+    if n_samples < 2:
+        return np.zeros(n_samples, dtype=bool)
+    
+    z_scores_per_feature = np.zeros_like(data_array)
+    for i in range(n_features):
+        feature_data = data_array[:, i]
+        feature_mean = np.mean(feature_data)
+        feature_std = np.std(feature_data, ddof=0)
+    
+        if feature_std < 1e-10:
+            z_scores_per_feature[:, i] = 0.0
+        else:
+            relative_deviations = np.abs(feature_data - feature_mean) / (np.abs(feature_mean) + 1e-10)
+            max_relative_deviation = np.max(relative_deviations)
+            
+            if max_relative_deviation < 1e-12:
+                z_scores_per_feature[:, i] = 0.0
+            else:
+                z_scores_per_feature[:, i] = np.abs((feature_data - feature_mean) / feature_std)
+    
+    max_z_scores = np.max(z_scores_per_feature, axis=1)
+    if np.all(max_z_scores == 0):
+        return np.zeros(n_samples, dtype=bool)
+    
     threshold_percentile = (1 - contamination) * 100
     threshold_value = np.percentile(max_z_scores, threshold_percentile)
     
     return max_z_scores > threshold_value
-
 
 def dbscanAdaptiveOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
@@ -233,8 +254,45 @@ def ellipticOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         np.ndarray: Boolean array where True indicates an outlier
     """
 
-    n_samples = len(df)
-    support_fraction = max(0.5, min(0.9, (n_samples - 10) / n_samples))
+    n_samples, n_features = df.shape
+    if n_samples < 2:
+        return np.zeros(n_samples, dtype=bool)
+    
+    data_array = df.values
+    feature_variances = np.var(data_array, axis=0)
+    if (feature_variances < 1e-10).any():
+        valid_features = feature_variances >= 1e-10
+        if valid_features.sum() == 0:
+            return np.zeros(n_samples, dtype=bool)
+        data_for_covariance = data_array[:, valid_features]
+    else:
+        data_for_covariance = data_array
+    
+    if data_for_covariance.shape[1] >= n_samples:
+        from sklearn.metrics import pairwise_distances
+        distances = pairwise_distances(data_array)
+        mean_distances = np.mean(distances, axis=1)
+        threshold = np.percentile(mean_distances, (1 - contamination) * 100)
+        return mean_distances > threshold
+    
+    try:
+        sample_cov = np.cov(data_for_covariance.T)
+        if data_for_covariance.shape[1] > 1:
+            cond_number = np.linalg.cond(sample_cov)
+            if cond_number > 1e12:
+                from sklearn.metrics import pairwise_distances
+                distances = pairwise_distances(data_array)
+                mean_distances = np.mean(distances, axis=1)
+                threshold = np.percentile(mean_distances, (1 - contamination) * 100)
+                return mean_distances > threshold
+    except np.linalg.LinAlgError:
+        from sklearn.metrics import pairwise_distances
+        distances = pairwise_distances(data_array)
+        mean_distances = np.mean(distances, axis=1)
+        threshold = np.percentile(mean_distances, (1 - contamination) * 100)
+        return mean_distances > threshold
+    
+    support_fraction = max(0.5, min(0.9, (n_samples - n_features - 1) / n_samples))
     
     elliptic_env = EllipticEnvelope(
         contamination=contamination,
@@ -295,11 +353,66 @@ def mcdOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         np.ndarray: Boolean array where True indicates an outlier
     """
 
-    n_samples = len(df)
-    support_fraction = max(0.5, min(0.9, (n_samples - len(df.columns) - 1) / n_samples))
+    n_samples, n_features = df.shape
     
-    mcd = MinCovDet(support_fraction=support_fraction).fit(df)
-    mahalanobis_distances = mcd.mahalanobis(df)
+    # Check if we have enough samples for MCD estimation
+    if n_samples < 2:
+        return np.zeros(n_samples, dtype=bool)
+    
+    # MCD requires more samples than features for stable estimation
+    if n_samples <= n_features:
+        # Fall back to simple statistical approach
+        from scipy.stats import zscore
+        z_scores = np.abs(zscore(df, axis=0, nan_policy='omit'))
+        max_z_scores = np.nanmax(z_scores, axis=1)
+        threshold = np.percentile(max_z_scores, (1 - contamination) * 100)
+        return max_z_scores > threshold
+    
+    # Check for constant features that would cause rank deficiency
+    data_array = df.values
+    feature_variances = np.var(data_array, axis=0)
+    
+    if (feature_variances < 1e-10).any():
+        # Remove constant features for MCD estimation
+        valid_features = feature_variances >= 1e-10
+        if valid_features.sum() == 0:
+            # All features are constant
+            return np.zeros(n_samples, dtype=bool)
+        
+        # Use only non-constant features for MCD
+        df_filtered = df.iloc[:, valid_features]
+        n_features_filtered = df_filtered.shape[1]
+        
+        # Recheck sample requirement with filtered features
+        if n_samples <= n_features_filtered:
+            from scipy.stats import zscore
+            z_scores = np.abs(zscore(df_filtered, axis=0, nan_policy='omit'))
+            max_z_scores = np.nanmax(z_scores, axis=1)
+            threshold = np.percentile(max_z_scores, (1 - contamination) * 100)
+            return max_z_scores > threshold
+    else:
+        df_filtered = df
+        n_features_filtered = n_features
+    
+    # Calculate support fraction ensuring enough samples for robust estimation
+    min_support_samples = n_features_filtered + 1
+    max_support_samples = n_samples
+    support_samples = max(min_support_samples, int(n_samples * 0.5))
+    support_samples = min(support_samples, max_support_samples)
+    support_fraction = support_samples / n_samples
+    support_fraction = max(0.5, min(0.9, support_fraction))
+    
+    try:
+        mcd = MinCovDet(support_fraction=support_fraction).fit(df_filtered)
+        mahalanobis_distances = mcd.mahalanobis(df_filtered)
+    except (np.linalg.LinAlgError, ValueError):
+        # Fall back to simple distance-based approach if MCD fails
+        from sklearn.metrics import pairwise_distances
+        distances = pairwise_distances(df.values)
+        mean_distances = np.mean(distances, axis=1)
+        threshold = np.percentile(mean_distances, (1 - contamination) * 100)
+        return mean_distances > threshold
+    
     threshold_percentile = (1 - contamination) * 100
     threshold = np.percentile(mahalanobis_distances, threshold_percentile)
     

@@ -1,14 +1,11 @@
 import argparse
 import pandas as pd
-import warnings
 import sys
 from src.html import generateHTML
 from src.report import printReport
 from src.core import runAll, aggregate
 from src.data import clean
 from src.contamination import estimateOutlierContamination
-
-warnings.filterwarnings("ignore")
 
 def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None, consensusThreshold=None):
     print(f"Loading dataset from {file}...")

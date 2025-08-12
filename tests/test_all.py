@@ -108,7 +108,6 @@ class TestContaminationEstimation:
         assert 0.001 <= estimated <= 0.3
         
     def test_estimateOutlierContamination_normal_data(self):
-        np.random.seed(42)
         normal_data = np.random.normal(0, 1, (1000, 5))
         df_normal = pd.DataFrame(normal_data)
         estimated = estimateOutlierContamination(df_normal)
@@ -215,7 +214,6 @@ class TestPerformance:
 
 class TestQuality:
     def test_quality_with_known_outliers(self):
-        np.random.seed(42)
         normal_data = np.random.normal(0, 1, (900, 5))
         outlier_data = np.random.normal(5, 1, (100, 5))
         all_data = np.vstack([normal_data, outlier_data])
