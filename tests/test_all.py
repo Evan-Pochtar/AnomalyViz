@@ -90,10 +90,10 @@ class TestDataHandling:
         assert len(cleaned) == 2
         
     def test_clean_function_error_cases(self):
-        with pytest.raises(ValueError, match="Input DataFrame is empty"):
+        with pytest.raises(ValueError, match="Input DataFrame is empty or None"):
             clean(pd.DataFrame())
         df_text = pd.DataFrame({'text': ['a', 'b', 'c']})
-        with pytest.raises(ValueError, match="No numeric columns found"):
+        with pytest.raises(ValueError, match="No numeric columns with valid finite values found"):
             clean(df_text)
 
 class TestContaminationEstimation:

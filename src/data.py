@@ -4,15 +4,15 @@ import pandas as pd
 def clean(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or df.empty:
         raise ValueError("Input DataFrame is empty or None")
-    
-    if len(df) == 0:
+    if df.shape[0] == 0:
         raise ValueError("DataFrame has no rows")
-        
-    if len(df.columns) == 0:
+    if df.shape[1] == 0:
         raise ValueError("DataFrame has no columns")
     
-    df = df.select_dtypes(include=[np.number]).dropna()
-    if df.empty:
-        raise ValueError("No numeric columns found in the dataset for outlier detection.")
+    numeric_df = df.select_dtypes(include=[np.number])
+    numeric_df = numeric_df[~numeric_df.isin([np.nan, np.inf, -np.inf]).any(axis=1)]
     
-    return df
+    if numeric_df.empty:
+        raise ValueError("No numeric columns with valid finite values found")
+    
+    return numeric_df

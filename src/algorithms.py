@@ -101,7 +101,7 @@ def isoforestOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
 
     n_samples = len(df)
     n_estimators = max(50, min(200, int(n_samples / 10)))
-    max_samples = min(256, max(32, int(n_samples * 0.8)))
+    max_samples = min(256, max(n_samples, int(n_samples * 0.8)))
     
     iso_forest = IsolationForest(
         contamination=contamination, 
@@ -134,7 +134,7 @@ def lofOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
 
     n_samples = len(df)
-    n_neighbors = max(20, min(50, int(np.log(n_samples) * 3)))
+    n_neighbors = max(min(n_samples, 20), min(50, int(np.log(n_samples) * 3)))
     
     lof = LocalOutlierFactor(n_neighbors=n_neighbors, contamination=contamination)
     predictions = lof.fit_predict(df)
@@ -204,7 +204,7 @@ def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         sil_weight, sep_weight, comp_weight, iso_weight, cont_weight = 1.0, 0.5, 0.3, 0.2, 2.0
         total_score = (sil_weight * silScore + 
                       sep_weight * (separation / np.std(decisionScores)) +
-                      comp_weight * (compactness / np.std(inlier_distances) if len(inliers) > 1 else 0) +
+                      comp_weight * (compactness / (np.std(inlier_distances) +  1e-8) if len(inliers) > 1 else 0) +
                       iso_weight * (isolation / np.std(dataScaled.flatten())) -
                       cont_weight * contamination_penalty)
         
@@ -265,7 +265,7 @@ def knnOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
     
     n_samples = len(df)
-    k = max(20, min(30, int(np.log(n_samples) * 2)))
+    k = max(min(n_samples, 20), min(40, int(np.log(n_samples) * 2)))
     
     knn = NearestNeighbors(n_neighbors=k)
     distances, _ = knn.fit(df).kneighbors(df)
