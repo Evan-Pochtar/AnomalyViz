@@ -305,18 +305,16 @@ def mcdOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     
     return mahalanobis_distances > threshold
 
-def abodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+def copodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
-    Detect outliers using Fast Angle-Based Outlier Detection (ABOD).
+    Detect outliers using COPOD (Copula-Based Outlier Detection).
     
-    Optimized version that uses:
-    - Adaptive sampling to reduce computational complexity
-    - Vectorized operations for angle calculations
-    - Early termination for stable variance estimates
-    - Memory-efficient batch processing
+    COPOD uses copula functions to model the dependence structure between features
+    and detects outliers based on their empirical copula values. It's parameter-free,
+    fast, and works well with high-dimensional data.
     
-    Best for: High-dimensional data, points with unusual angular relationships.
-    Limitations: Approximation method, may miss some edge cases.
+    Best for: High-dimensional data, mixed distributions, very fast execution.
+    Limitations: May struggle with highly correlated features.
     
     Args:
         df (pd.DataFrame): Input dataset with numerical features
@@ -328,69 +326,39 @@ def abodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
 
     X = df.values
     n, d = X.shape
-    if n <= 100:
-        max_pairs = min(200, n * (n - 1) // 2)
-        batch_size = 50
-    elif n <= 1000:
-        max_pairs = min(500, n * 10)
-        batch_size = 100
-    else:
-        max_pairs = min(1000, n * 5)
-        batch_size = 200
+    copula_values = np.zeros_like(X)
     
-    outlier_scores = np.zeros(n)
+    for j in range(d):
+        ranks = np.argsort(np.argsort(X[:, j]))
+        copula_values[:, j] = (ranks + 1) / (n + 1)
     
-    if n > 50:
-        max_sample_pairs = min(max_pairs, n * (n - 1) // 2)
-        if max_sample_pairs < n * (n - 1) // 2:
-            pair_indices = []
-            seen = set()
-            while len(pair_indices) < max_sample_pairs:
-                j, k = np.random.choice(n, 2, replace=False)
-                if j != k and (j, k) not in seen and (k, j) not in seen:
-                    pair_indices.append((j, k))
-                    seen.add((j, k))
-            pair_indices = np.array(pair_indices)
-        else:
-            pair_indices = np.array([(j, k) for j in range(n) for k in range(j + 1, n)])
-    else:
-        pair_indices = np.array([(j, k) for j in range(n) for k in range(j + 1, n)])
+    copod_scores = np.zeros(n)
     
-    for i_start in range(0, n, batch_size):
-        i_end = min(i_start + batch_size, n)
-        batch_indices = range(i_start, i_end)
+    for i in range(n):
+        prob = 1.0
+        for j in range(d):
+            empirical_cdf = np.mean(X[:, j] <= X[i, j])
+            prob *= empirical_cdf
         
-        for i in batch_indices:
-            v1_batch = X[pair_indices[:, 0]] - X[i]
-            v2_batch = X[pair_indices[:, 1]] - X[i]
-            norm_v1 = np.linalg.norm(v1_batch, axis=1)
-            norm_v2 = np.linalg.norm(v2_batch, axis=1)
-            
-            valid_mask = (norm_v1 > 1e-10) & (norm_v2 > 1e-10)
-            if np.sum(valid_mask) == 0:
-                continue
-                
-            v1_valid = v1_batch[valid_mask]
-            v2_valid = v2_batch[valid_mask]
-            norm_v1_valid = norm_v1[valid_mask]
-            norm_v2_valid = norm_v2[valid_mask]
-            
-            dot_products = np.sum(v1_valid * v2_valid, axis=1)
-            cos_angles = np.clip(dot_products / (norm_v1_valid * norm_v2_valid), -1, 1)
-            angles = np.arccos(cos_angles)
-            angles = angles[np.isfinite(angles)]
+        expected_copula = np.prod(copula_values[i, :])
+        copod_scores[i] = abs(prob - expected_copula)
+    
+    if n > 2500:
+        copod_scores = np.zeros(n)
+        
+        empirical_cdfs = np.zeros_like(X)
+        for j in range(d):
+            for i in range(n):
+                empirical_cdfs[i, j] = np.mean(X[:, j] <= X[i, j])
+        
+        empirical_probs = np.prod(empirical_cdfs, axis=1)
+        expected_probs = np.prod(copula_values, axis=1)
+        copod_scores = np.abs(empirical_probs - expected_probs)
 
-            if len(angles) > 1:
-                outlier_scores[i] = np.var(angles)
-            else:
-                outlier_scores[i] = 0
+    threshold_percentile = (1 - contamination) * 100
+    threshold = np.percentile(copod_scores, threshold_percentile)
     
-    if np.all(outlier_scores == 0):
-        return np.zeros(n, dtype=bool)
-    
-    threshold_percentile = contamination * 100
-    threshold = np.percentile(outlier_scores, threshold_percentile)
-    return outlier_scores <= threshold
+    return copod_scores > threshold
 
 def hbosOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """

@@ -11,7 +11,7 @@ from src.algorithms import (
     ellipticOutliers,
     knnOutliers,
     mcdOutliers,
-    abodOutliers,
+    copodOutliers,  # Replace abodOutliers with copodOutliers
     hbosOutliers
 )
 
@@ -24,7 +24,7 @@ ALGORITHM_MAP = {
     'elliptic': ellipticOutliers,
     'knn': knnOutliers,
     'mcd': mcdOutliers,
-    'abod': abodOutliers,
+    'copod': copodOutliers,  # Replace 'abod': abodOutliers with copod
     'hbos': hbosOutliers
 }
 
@@ -68,6 +68,7 @@ def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float 
             }
             
         except Exception as e:
+            print(e)
             failed.append(algorithm)
             timings[algorithm] = None
             statistics[algorithm] = {

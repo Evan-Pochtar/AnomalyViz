@@ -52,7 +52,7 @@ if __name__ == "__main__":
     parser.add_argument("--NoHtmlReport", action='store_false', required=False, help="Flag to disable HTML report generation")
     parser.add_argument("--NoConsoleReport", action='store_false', required=False, help="Flag to disable console text report generation")
     parser.add_argument("--algorithms", type=str, nargs='+', required=False,
-                       choices=['zscore', 'dbscan', 'isoforest', 'lof', 'svm', 'elliptic', 'knn', 'mcd', 'abod', 'hbos'],
+                       choices=['zscore', 'dbscan', 'isoforest', 'lof', 'svm', 'elliptic', 'knn', 'mcd', 'copod', 'hbos'],
                        help="Select specific algorithms to run. If not specified, all algorithms will be run.")
     parser.add_argument("--contamination", type=float, required=False, help="Estimated contamination rate for outlier detection. If not specified, it will be estimated from the data. Must be between 0 and 0.5.")
     parser.add_argument("--consensusThreshold", type=int, required=False, help="Number of algorithms that must agree for a consensus outlier. Must be between 1 and the total number of algorithms. If not specified, defaults to 50%% of algorithms (rounded up).")

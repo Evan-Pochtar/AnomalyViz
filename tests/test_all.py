@@ -17,7 +17,7 @@ sys.path.insert(0, project_root)
 from src.algorithms import (
     zscoreOutliers, dbscanAdaptiveOutliers, isoforestOutliers,
     lofOutliers, svmOutliers, ellipticOutliers, knnOutliers,
-    mcdOutliers, abodOutliers, hbosOutliers
+    mcdOutliers, copodOutliers, hbosOutliers
 )
 from src.core import runAll, aggregate, ALGORITHM_MAP
 from src.data import clean
@@ -144,9 +144,7 @@ class TestIndividualAlgorithms:
         assert 0.0 <= outlier_rate <= 0.5
         
     def test_abod_algorithm_specific(self, clean_small_data):
-        """Test ABOD algorithm (marked as slow)"""
-        result = abodOutliers(clean_small_data, 0.1)
-        
+        result = copodOutliers(clean_small_data, 0.1)
         outlier_rate = np.mean(result)
         assert 0.0 <= outlier_rate <= 0.5
         
