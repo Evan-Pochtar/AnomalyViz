@@ -436,42 +436,29 @@ def copodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     Returns:
         np.ndarray: Boolean array where True indicates an outlier
     """
-
+    
     X = df.values
     n, d = X.shape
-    copula_values = np.zeros_like(X)
-    
-    for j in range(d):
-        ranks = np.argsort(np.argsort(X[:, j]))
-        copula_values[:, j] = (ranks + 1) / (n + 1)
-    
-    copod_scores = np.zeros(n)
-    
-    for i in range(n):
-        prob = 1.0
-        for j in range(d):
-            empirical_cdf = np.mean(X[:, j] <= X[i, j])
-            prob *= empirical_cdf
-        
-        expected_copula = np.prod(copula_values[i, :])
-        copod_scores[i] = abs(prob - expected_copula)
-    
-    if n > 2500:
-        copod_scores = np.zeros(n)
-        
-        empirical_cdfs = np.zeros_like(X)
-        for j in range(d):
-            for i in range(n):
-                empirical_cdfs[i, j] = np.mean(X[:, j] <= X[i, j])
-        
-        empirical_probs = np.prod(empirical_cdfs, axis=1)
-        expected_probs = np.prod(copula_values, axis=1)
-        copod_scores = np.abs(empirical_probs - expected_probs)
+    if n == 0:
+        return np.array([], dtype=bool)
 
-    threshold_percentile = (1 - contamination) * 100
-    threshold = np.percentile(copod_scores, threshold_percentile)
-    
-    return copod_scores > threshold
+    ranks = df.rank(method='average').values
+    F = ranks / (n + 1.0)
+
+    eps = 1.0 / (n + 1.0)
+    left_log = -np.log(F + eps)
+    right_log = -np.log(1.0 - F + eps)
+    tail_score = np.maximum(left_log, right_log)
+
+    raw_scores = tail_score.sum(axis=1)
+    med = np.median(raw_scores)
+    mad = np.median(np.abs(raw_scores - med))
+    if mad == 0:
+        mad = 1.0
+    scores = (raw_scores - med) / mad
+
+    threshold = np.percentile(scores, 100.0 * (1.0 - contamination))
+    return scores > threshold
 
 def hbosOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
