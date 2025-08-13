@@ -8,6 +8,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import ParameterGrid
 from scipy.spatial.distance import pdist, cdist
 from sklearn.metrics import silhouette_score
+from sklearn.metrics import pairwise_distances
+from scipy.stats import zscore
 import numpy as np
 
 def zscoreOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
@@ -269,7 +271,6 @@ def ellipticOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         data_for_covariance = data_array
     
     if data_for_covariance.shape[1] >= n_samples:
-        from sklearn.metrics import pairwise_distances
         distances = pairwise_distances(data_array)
         mean_distances = np.mean(distances, axis=1)
         threshold = np.percentile(mean_distances, (1 - contamination) * 100)
@@ -280,13 +281,11 @@ def ellipticOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         if data_for_covariance.shape[1] > 1:
             cond_number = np.linalg.cond(sample_cov)
             if cond_number > 1e12:
-                from sklearn.metrics import pairwise_distances
                 distances = pairwise_distances(data_array)
                 mean_distances = np.mean(distances, axis=1)
                 threshold = np.percentile(mean_distances, (1 - contamination) * 100)
                 return mean_distances > threshold
     except np.linalg.LinAlgError:
-        from sklearn.metrics import pairwise_distances
         distances = pairwise_distances(data_array)
         mean_distances = np.mean(distances, axis=1)
         threshold = np.percentile(mean_distances, (1 - contamination) * 100)
@@ -354,38 +353,28 @@ def mcdOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
 
     n_samples, n_features = df.shape
-    
-    # Check if we have enough samples for MCD estimation
+
     if n_samples < 2:
         return np.zeros(n_samples, dtype=bool)
     
-    # MCD requires more samples than features for stable estimation
     if n_samples <= n_features:
-        # Fall back to simple statistical approach
-        from scipy.stats import zscore
         z_scores = np.abs(zscore(df, axis=0, nan_policy='omit'))
         max_z_scores = np.nanmax(z_scores, axis=1)
         threshold = np.percentile(max_z_scores, (1 - contamination) * 100)
         return max_z_scores > threshold
     
-    # Check for constant features that would cause rank deficiency
     data_array = df.values
     feature_variances = np.var(data_array, axis=0)
     
     if (feature_variances < 1e-10).any():
-        # Remove constant features for MCD estimation
         valid_features = feature_variances >= 1e-10
         if valid_features.sum() == 0:
-            # All features are constant
             return np.zeros(n_samples, dtype=bool)
         
-        # Use only non-constant features for MCD
         df_filtered = df.iloc[:, valid_features]
         n_features_filtered = df_filtered.shape[1]
         
-        # Recheck sample requirement with filtered features
         if n_samples <= n_features_filtered:
-            from scipy.stats import zscore
             z_scores = np.abs(zscore(df_filtered, axis=0, nan_policy='omit'))
             max_z_scores = np.nanmax(z_scores, axis=1)
             threshold = np.percentile(max_z_scores, (1 - contamination) * 100)
@@ -394,7 +383,6 @@ def mcdOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         df_filtered = df
         n_features_filtered = n_features
     
-    # Calculate support fraction ensuring enough samples for robust estimation
     min_support_samples = n_features_filtered + 1
     max_support_samples = n_samples
     support_samples = max(min_support_samples, int(n_samples * 0.5))
@@ -406,8 +394,6 @@ def mcdOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
         mcd = MinCovDet(support_fraction=support_fraction).fit(df_filtered)
         mahalanobis_distances = mcd.mahalanobis(df_filtered)
     except (np.linalg.LinAlgError, ValueError):
-        # Fall back to simple distance-based approach if MCD fails
-        from sklearn.metrics import pairwise_distances
         distances = pairwise_distances(df.values)
         mean_distances = np.mean(distances, axis=1)
         threshold = np.percentile(mean_distances, (1 - contamination) * 100)
