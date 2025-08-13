@@ -7,6 +7,39 @@ from collections import defaultdict
 from src.visualization import PCAvisualization, createSummaryViz
 
 def generateHTML(df: pd.DataFrame, results: dict[str, pd.Series], agreement: defaultdict[int, int], outputPath: str = "report/AnomalyReport.html", consensusThreshold: int = None) -> None:
+    """
+    Generate a comprehensive HTML report with visualizations for outlier detection results.
+    
+    Creates an interactive HTML report that combines outlier detection results from multiple
+    algorithms with visual representations. The report includes consensus analysis,
+    individual algorithm results, and various plots to help interpret the findings.
+    
+    Report generation strategy:
+    1. Calculate consensus outliers based on threshold
+    2. Generate and saves PCA visualizations for consensus and individual algorithms
+    3. Create and saves summary statistics visualization
+    4. Render HTML template with all results and plots
+    5. Save complete report with embedded visualizations
+    
+    Consensus logic:
+    - Default threshold: 50% of algorithms must agree (rounded up)
+    - Custom threshold can be specified
+    
+    Args:
+        df (pd.DataFrame): Original dataset used for outlier detection
+        results (dict[str, pd.Series]): Algorithm results mapping names to outlier masks
+        agreement (defaultdict[int, int]): Agreement counts per data point index
+        outputPath (str): File path for saving HTML report (default: "report/AnomalyReport.html")
+        consensusThreshold (int, optional): Minimum algorithms required for consensus.
+                                          If None, uses 50% of total algorithms (rounded up)
+                                          
+    Returns:
+        None: Saves HTML report to specified path and prints summary statistics
+        
+    Raises:
+        FileNotFoundError: If HTML template file cannot be found
+    """
+
     numAlgos = len(results)
     if consensusThreshold is not None:
         conThreshold = consensusThreshold

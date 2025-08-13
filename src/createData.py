@@ -2,6 +2,40 @@ import numpy as np
 import pandas as pd
 
 def createSampleDataset(n_samples: int = 1000, n_features: int = 10, contamination: float = 0.1, random_state: int = 1) -> pd.DataFrame:
+    """
+    Generate a synthetic dataset with known outliers for testing outlier detection algorithms.
+    
+    Creates a realistic multi-dimensional dataset with both normal data points and
+    deliberately introduced anomalies. This is essential for validating outlier
+    detection algorithms since we know the ground truth labels.
+    
+    Dataset composition:
+    1. Normal data: Multivariate normal distribution centered at origin
+    2. Anomalous data: Multivariate normal distribution with different mean and variance
+    3. Additional categorical and integer features for realism
+    4. Ground truth labels for validation
+    
+    Data generation strategy:
+    - Normal points: Mean=0, Covariance=Identity matrix
+    - Anomaly points: Mean=3 (shifted), Covariance=2xIdentity (higher variance)
+    - Mixed data types: Numeric features + categorical + integer features
+    - Reproducible results via random seed
+    
+    Args:
+        n_samples (int): Total number of data points to generate (default: 1000)
+        n_features (int): Number of numeric features in the dataset (default: 10)
+        contamination (float): Proportion of anomalies (0.0 to 1.0, default: 0.1)
+        random_state (int): Random seed for reproducible results (default: 1)
+        
+    Returns:
+        pd.DataFrame: Generated dataset containing:
+            - feature_0 to feature_{n_features-1}: Numeric features
+            - is_anomaly: Ground truth labels (0=normal, 1=anomaly)
+            - category_A: Categorical feature with 3 levels
+            - category_B: Categorical feature with 2 levels  
+            - integer_feature: Random integer feature (1-99)
+    """
+
     np.random.seed(random_state)
     n_normal = int(n_samples * (1 - contamination))
     n_anomalies = n_samples - n_normal

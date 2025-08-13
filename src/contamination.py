@@ -3,6 +3,27 @@ import numpy as np
 from sklearn.ensemble import IsolationForest
 
 def estimateOutlierContamination(df: pd.DataFrame) -> float:
+    """
+    Automatically estimate the contamination rate (outlier proportion) in a dataset.
+    
+    Uses Isolation Forest with 'auto' contamination to detect outliers and calculate
+    the actual contamination rate. This helps determine appropriate contamination
+    parameters for other outlier detection algorithms.
+    
+    Optimization strategy:
+    1. Limit processing to 100,000 samples for performance
+    2. Use random sampling if dataset is larger
+    3. Use all CPU cores (n_jobs=-1) for parallel processing
+    4. Apply 100 estimators for robust detection
+    
+    Args:
+        df (pd.DataFrame): Input dataset to analyze for outlier contamination
+        
+    Returns:
+        float: Estimated contamination rate as a proportion (0.0 to 1.0)
+               where 0.1 means approximately 10% outliers
+    """
+    
     n_samples = len(df)
     max_rows = 100000
     if n_samples > max_rows:

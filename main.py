@@ -8,6 +8,30 @@ from src.data import clean
 from src.contamination import estimateOutlierContamination
 
 def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None, consensusThreshold=None):
+    """
+    Execute the complete outlier detection pipeline on a CSV dataset.
+    
+    This is the main orchestration function that coordinates the entire outlier detection
+    workflow from data loading through report generation. It handles data preprocessing,
+    contamination estimation, algorithm execution, consensus analysis, and report output.
+
+    Args:
+        file (str): Path to CSV file containing the dataset to analyze
+        HTMLreport (bool): Whether to generate HTML report with visualizations
+        ConsoleReport (bool): Whether to print console text report
+        algorithms (list[str], optional): Specific algorithms to run. If None, runs all available
+        contamination (float, optional): Expected contamination rate (0.0-0.5). 
+                                       If None, automatically estimated from data
+        consensusThreshold (int, optional): Minimum algorithms required for consensus.
+                                          If None, defaults to 50% of algorithms (rounded up)
+                                          
+    Returns:
+        None: Function performs side effects (file I/O, console output) rather than returning values
+        
+    Raises:
+        SystemExit: On data validation errors, invalid parameters, or file loading issues
+    """
+
     print(f"Loading dataset from {file}...")
     df = pd.read_csv(file)
    
@@ -44,6 +68,27 @@ def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None, c
         generateHTML(df_clean, results['results'], agreement, consensusThreshold=consensusThreshold)
 
 if __name__ == "__main__":
+    """
+    Command-line interface for AnomalyViz outlier detection tool.
+    
+    Provides a comprehensive command-line interface for running outlier detection
+    on CSV datasets with configurable parameters. Supports algorithm selection,
+    contamination estimation, consensus analysis, and multiple report formats.
+    
+    Command-line arguments:
+    - file: Required CSV file path
+    - NoHtmlReport: Flag to disable HTML report (default: enabled)
+    - NoConsoleReport: Flag to disable console report (default: enabled)  
+    - algorithms: Optional list of specific algorithms to run (runs all if not specified)
+    - contamination: Optional contamination rate (auto-estimated if not provided)
+    - consensusThreshold: Optional consensus threshold (defaults to 50% if not provided)
+    
+    Example usage:
+        python main.py --file data.csv
+        python main.py --file data.csv --algorithms zscore isoforest --contamination 0.1
+        python main.py --file data.csv --consensusThreshold 3 --NoConsoleReport
+    """
+
     parser = argparse.ArgumentParser(description="AnomalyViz: Visual Outlier Detector for CSV data")
     parser.add_argument("--file", type=str, required=True, help="Path to CSV file")
     parser.add_argument("--NoHtmlReport", action='store_false', required=False, help="Flag to disable HTML report generation")

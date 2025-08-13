@@ -25,7 +25,7 @@ AnomalyViz is a Python-based outlier detection system that runs multiple anomaly
 6. **Elliptic Envelope** - Gaussian distribution-based detection
 7. **K-Nearest Neighbors (KNN)** - Distance-based outlier detection
 8. **Minimum Covariance Determinant (MCD)** - Robust covariance estimation
-9. **Angle-Based Outlier Detection (ABOD)** - Variance of angles between data points
+9. **Copula-Based Outlier Detection (COPOD)** - Detects outliers based on their empirical copula values
 10. **Histogram-Based Outlier Score (HBOS)** - Histogram-based anomaly scoring
 
 ## Installation
@@ -76,7 +76,7 @@ python main.py --contamination 0.05
 
 - `--file` (required): Path to your CSV file
 - `--algorithms` (optional): Space-separated list of algorithms to run
-  - Available: `zscore`, `dbscan`, `isoforest`, `lof`, `svm`, `elliptic`, `knn`, `mcd`, `abod`, `hbos`
+  - Available: `zscore`, `dbscan`, `isoforest`, `lof`, `svm`, `elliptic`, `knn`, `mcd`, `copod`, `hbos`
 - `--contamination` (optional): An estimated percentage of outliers in the dataset
 - `--consensusThreshold` (optional): Number of algorithms that must agree for a consensus outlier.
 - `--NoHtmlReport` (optional): Disable HTML report generation
@@ -130,12 +130,12 @@ AnomalyViz uses a consensus-based approach to identify the most reliable outlier
 
 Run the test suite:
 ```bash
-python -m pytest tests/
+pytest
 ```
 
-Or run specific tests:
+Or run a specific test file:
 ```bash
-python tests/test_all.py
+pytest tests/test_all.py
 ```
 
 ## Sample Data Generation
@@ -143,7 +143,7 @@ python tests/test_all.py
 Generate test data for experimentation:
 ```python
 from src.createData import createSampleDataset
-createSampleDataset(n_samples=500, contamination=0.05)
+createSampleDataset(n_samples=1000, n_features=10, contamination=0.05)
 ```
 
 ## Performance Considerations
@@ -158,8 +158,12 @@ createSampleDataset(n_samples=500, contamination=0.05)
 - scikit-learn: Machine learning algorithms
 - numpy: Numerical computing
 - scipy: Scientific computing
+- jinja2: Used for HTML templating
 - matplotlib: Plotting and visualization
+- seaborn: Additional visualization
 - argparse: Command-line interface
+- pytest: Used for running the testing suite
+- psutil: Used for detailed testing
 
 ## License
 
@@ -167,9 +171,7 @@ This project is open source. Please check the LICENSE file for details.
 
 ## Future Enhancements
 
-- Robust testing to verify correct functionality
 - Ability to find outliers in text, video, or picture data
 - Additional visualization options
 - Custom algorithm integration framework
-- Automated parameter tuning for all algorithms
 - Increased performance on large datasets

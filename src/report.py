@@ -3,6 +3,49 @@ import pandas as pd
 from collections import defaultdict
 
 def printReport(results, agreement: defaultdict[int, int], consensusThreshold: int = None) -> None:
+    """
+    Print a comprehensive console report of outlier detection results and consensus analysis.
+    
+    Generates a detailed text-based report that summarizes the performance of multiple
+    outlier detection algorithms, their execution times, and consensus findings. The
+    report adapts its detail level based on the number of consensus outliers found.
+    
+    Report sections:
+    1. Algorithm Results: Individual algorithm performance and timing
+    2. Performance Summary: Execution time analysis and failure reporting
+    3. Consensus Settings: Threshold explanation and agreement requirements
+    4. Consensus Results: Detailed analysis of points flagged by multiple algorithms
+    5. Agreement Distribution: Statistical breakdown of consensus patterns
+    
+    Consensus analysis strategy:
+    - Default threshold: 50% of algorithms must agree (rounded up)
+    - Adaptive detail level based on number of consensus outliers
+    - Shows top outliers ranked by agreement count
+    - Provides percentage breakdowns for better interpretation
+    
+    Display logic:
+    - ≤20 consensus outliers: Show all specific outliers
+    - ≤100 consensus outliers: Show top 10 outliers
+    - >100 consensus outliers: Show top 5 outliers
+    - No consensus: Show highest agreement points as fallback
+    
+    Args:
+        results: Either a dict of algorithm results (legacy format) or a full results
+                dict from runAll() containing 'results', 'timings', 'statistics', and 'metadata'
+        agreement (defaultdict[int, int]): Agreement counts per data point index
+        consensusThreshold (int, optional): Minimum algorithms required for consensus.
+                                          If None, uses 50% of total algorithms (rounded up)
+                                          
+    Returns:
+        None: Prints formatted report to console
+        
+    Side effects:
+        - Prints multi-section report with performance metrics
+        - Shows consensus outlier analysis
+        - Reports timing statistics if available
+        - Displays algorithm failure information
+    """
+    
     print("\n===== Outlier Detection Report =====")
     
     if isinstance(results, dict) and 'results' in results:

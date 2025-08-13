@@ -29,6 +29,44 @@ ALGORITHM_MAP = {
 }
 
 def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float = 0.00) -> dict:
+    """
+    Execute multiple outlier detection algorithms on a dataset with comprehensive reporting.
+    
+    This is the main orchestration function that runs selected outlier detection algorithms,
+    measures their performance, handles failures gracefully, and provides detailed statistics
+    about execution time, contamination rates, and algorithm success/failure rates.
+    
+    Execution strategy:
+    1. Validate input parameters and algorithms
+    2. Run each algorithm with error handling and timing
+    3. Calculate statistics for successful runs
+    4. Aggregate timing and performance metrics
+    5. Return comprehensive results with metadata
+    
+    Error handling:
+    - Invalid algorithms raise ValueError with available options
+    - Individual algorithm failures are caught and logged
+    - Failed algorithms don't stop execution of others
+    - Comprehensive failure reporting in metadata
+    
+    Args:
+        df (pd.DataFrame): Input dataset for outlier detection
+        algorithms (list[str], optional): List of algorithm names to run.
+                                        If None, runs all available algorithms
+        contamination (float): Expected contamination rate (0.0 to 0.5)
+                             Used by algorithms that require this parameter
+                             
+    Returns:
+        dict: Comprehensive results dictionary containing:
+            - results: Algorithm outlier masks as pandas Series
+            - timings: Execution time for each algorithm
+            - statistics: Detailed stats including outlier counts and contamination
+            - metadata: Dataset info, success rates, and timing summaries
+            
+    Raises:
+        ValueError: If invalid algorithms specified or contamination out of range
+    """
+    
     if not algorithms:
         algorithms = list(ALGORITHM_MAP.keys())
     
@@ -121,6 +159,29 @@ def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float 
     }
 
 def aggregate(results) -> defaultdict[int, int]:
+    """
+    Aggregate outlier detection results across multiple algorithms to find consensus.
+    
+    This function counts how many algorithms flagged each data point as an outlier,
+    enabling consensus-based outlier detection where points flagged by multiple
+    algorithms are considered more likely to be true outliers.
+    
+    Aggregation strategy:
+    1. Iterate through each algorithm's results
+    2. For each outlier detected, increment the count for that data point
+    3. Return a mapping of data point indices to agreement counts
+    
+    Args:
+        results (dict): Dictionary mapping algorithm names to boolean outlier masks
+                       Each mask should be iterable with same length as original dataset
+                       
+    Returns:
+        defaultdict[int, int]: Mapping where keys are data point indices and values
+                              are the number of algorithms that flagged that point
+                              as an outlier. Only includes points flagged by at least
+                              one algorithm (indices with 0 agreements are omitted)
+    """
+
     agreement = defaultdict(int)
     
     for method, mask in results.items():
