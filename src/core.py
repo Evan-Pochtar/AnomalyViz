@@ -36,19 +36,6 @@ def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float 
     measures their performance, handles failures gracefully, and provides detailed statistics
     about execution time, contamination rates, and algorithm success/failure rates.
     
-    Execution strategy:
-    1. Validate input parameters and algorithms
-    2. Run each algorithm with error handling and timing
-    3. Calculate statistics for successful runs
-    4. Aggregate timing and performance metrics
-    5. Return comprehensive results with metadata
-    
-    Error handling:
-    - Invalid algorithms raise ValueError with available options
-    - Individual algorithm failures are caught and logged
-    - Failed algorithms don't stop execution of others
-    - Comprehensive failure reporting in metadata
-    
     Args:
         df (pd.DataFrame): Input dataset for outlier detection
         algorithms (list[str], optional): List of algorithm names to run.
@@ -66,7 +53,7 @@ def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float 
     Raises:
         ValueError: If invalid algorithms specified or contamination out of range
     """
-    
+
     if not algorithms:
         algorithms = list(ALGORITHM_MAP.keys())
     
@@ -165,11 +152,6 @@ def aggregate(results) -> defaultdict[int, int]:
     This function counts how many algorithms flagged each data point as an outlier,
     enabling consensus-based outlier detection where points flagged by multiple
     algorithms are considered more likely to be true outliers.
-    
-    Aggregation strategy:
-    1. Iterate through each algorithm's results
-    2. For each outlier detected, increment the count for that data point
-    3. Return a mapping of data point indices to agreement counts
     
     Args:
         results (dict): Dictionary mapping algorithm names to boolean outlier masks

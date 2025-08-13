@@ -9,18 +9,6 @@ def createSampleDataset(n_samples: int = 1000, n_features: int = 10, contaminati
     deliberately introduced anomalies. This is essential for validating outlier
     detection algorithms since we know the ground truth labels.
     
-    Dataset composition:
-    1. Normal data: Multivariate normal distribution centered at origin
-    2. Anomalous data: Multivariate normal distribution with different mean and variance
-    3. Additional categorical and integer features for realism
-    4. Ground truth labels for validation
-    
-    Data generation strategy:
-    - Normal points: Mean=0, Covariance=Identity matrix
-    - Anomaly points: Mean=3 (shifted), Covariance=2xIdentity (higher variance)
-    - Mixed data types: Numeric features + categorical + integer features
-    - Reproducible results via random seed
-    
     Args:
         n_samples (int): Total number of data points to generate (default: 1000)
         n_features (int): Number of numeric features in the dataset (default: 10)
