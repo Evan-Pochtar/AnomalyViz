@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict
 import sys, os
+import psutil
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
@@ -145,8 +146,6 @@ class TestConsensusEdgeCases:
 class TestPerformanceEdgeCases:
     def test_memory_usage_large_dataset(self):
         df_large = pd.DataFrame(np.random.normal(0, 1, size=(5000, 20)))
-        import psutil
-        import os
         process = psutil.Process(os.getpid())
         memory_before = process.memory_info().rss / 1024 / 1024
         results = runAll(df_large, algorithms=['zscore', 'isoforest'], contamination=0.02)
