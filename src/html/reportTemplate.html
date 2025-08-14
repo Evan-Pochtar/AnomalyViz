@@ -9,489 +9,354 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <style>
     :root {
-      --primary: #60A5FA;
-      --primary-dark: #2563EB;
-      --primary-light: #93C5FD;
-      --secondary: #94A3B8;
-      --accent: #F59E0B;
+      --bg: #F5F7FA;
+      --surface: #FFFFFF;
+      --muted-surface: #F1F5F9;
+      --text: #0F172A;
+      --muted: #475569;
+      --primary: #7C3AED;
+      --primary-600: #6D28D9;
+      --accent: #06B6D4;
       --success: #10B981;
       --warning: #F59E0B;
       --danger: #EF4444;
-      --bg-primary: #0B0F1A;
-      --bg-secondary: #1A202C;
-      --bg-tertiary: #2D3748;
-      --text-primary: #F7FAFC;
-      --text-secondary: #E2E8F0;
-      --text-muted: #A0AEC0;
-      --border: #4A5568;
-      --border-light: #2D3748;
-      --shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.8), 0 1px 2px 0 rgba(0, 0, 0, 0.7);
-      --shadow-md: 0 6px 12px -2px rgba(0, 0, 0, 0.8), 0 3px 6px -1px rgba(0, 0, 0, 0.7);
-      --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.8), 0 6px 12px -2px rgba(0, 0, 0, 0.7);
+      --border: #E6EEF6;
+      --soft-shadow: 0 6px 18px rgba(16,24,40,0.06);
+      --soft-shadow-2: 0 4px 10px rgba(2,6,23,0.06);
+      --radius-lg: 14px;
+      --radius-md: 10px;
     }
 
-    * { 
-      box-sizing: border-box; 
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-tertiary) 100%);
-      color: var(--text-primary);
-      line-height: 1.6;
+      font-family: 'Inter',system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, var(--bg) 0%, #EEF2FF 100%);
+      color: var(--text);
       min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
     .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2rem;
+      width: 60vw;
+      margin: 28px auto;
+      padding: 28px;
+      max-width: none;
+      box-sizing: border-box;
     }
 
     .header {
-      text-align: center;
-      margin-bottom: 3rem;
-      background: var(--bg-secondary);
-      padding: 2rem;
-      border-radius: 16px;
-      box-shadow: var(--shadow-lg);
+      background: linear-gradient(90deg, rgba(124,58,237,0.06), rgba(6,182,212,0.03));
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      box-shadow: var(--soft-shadow);
       border: 1px solid var(--border);
     }
 
-    .header h1 {
-      font-size: 2.5rem;
+    .logo {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg,var(--primary),var(--accent));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
       font-weight: 700;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      flex-shrink: 0;
     }
 
-    .header .subtitle {
-      color: var(--text-secondary);
-      font-size: 1.1rem;
-      font-weight: 400;
+    .header h1 {
+      font-size: 1.5rem;
+      margin: 0;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 4px;
+    }
+
+    .header-meta {
+      margin-left: auto;
+      text-align: right;
+      color: var(--muted);
+      font-size: 0.9rem;
     }
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
+      grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+      gap: 16px;
+      margin: 20px 0 26px 0;
     }
-
     .stat-card {
-      background: var(--bg-secondary);
+      background: var(--surface);
       border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: var(--shadow);
+      padding: 16px;
       border: 1px solid var(--border);
-      transition: all 0.3s ease;
+      box-shadow: var(--soft-shadow-2);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: transform .16s ease, box-shadow .16s ease;
     }
-
     .stat-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
+      transform:translateY(-4px); 
+      box-shadow:0 10px 30px rgba(16,24,40,0.08);
     }
-
-    .stat-card .icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
+    .stat-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
+      color: white;
+      font-size: 1.1rem;
+      flex-shrink: 0;
     }
 
-    .stat-card .consensus .icon { background: linear-gradient(135deg, var(--success), #047857); color: white; }
-    .stat-card .algorithms .icon { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; }
-    .stat-card .dataset .icon { background: linear-gradient(135deg, var(--accent), #D97706); color: white; }
-    .stat-card .threshold .icon { background: linear-gradient(135deg, var(--warning), #D97706); color: white; }
-
-    .stat-value {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: 0.25rem;
+    .icon-consensus { 
+      background: linear-gradient(135deg,var(--success), #059669); 
+    }
+    .icon-algos { 
+      background: linear-gradient(135deg,var(--primary), var(--primary-600)); 
+    }
+    .icon-dataset { 
+      background: linear-gradient(135deg,var(--accent), #0891B2); 
+    }
+    .icon-threshold { 
+      background: linear-gradient(135deg,var(--warning), #D97706); 
     }
 
-    .stat-label {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    .stat-body { 
+      flex: 1; 
+    }
+    .stat-value { 
+      font-size: 1.6rem; 
+      font-weight: 700; 
+      color: var(--text); 
+    }
+    .stat-label { 
+      font-size: 0.78rem; 
+      color: var(--muted); 
+      margin-top: 4px; 
+      text-transform: uppercase; 
+      letter-spacing: 0.6px; 
     }
 
     .section {
-      background: var(--bg-secondary);
-      border-radius: 16px;
-      margin-bottom: 2rem;
-      box-shadow: var(--shadow);
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      margin-bottom: 18px;
       border: 1px solid var(--border);
+      box-shadow: var(--soft-shadow);
       overflow: hidden;
     }
-
     .section-header {
-      background: linear-gradient(135deg, var(--bg-tertiary) 0%, #1A202C 100%);
-      padding: 1.5rem 2rem;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      transition: all 0.3s ease;
+      padding: 14px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-    }
-
-    .section-header:hover {
-      background: linear-gradient(135deg, #1A202C 0%, var(--bg-primary) 100%);
-    }
-
-    .section-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .section-toggle {
-      font-size: 1.25rem;
-      color: var(--text-secondary);
-      transition: transform 0.3s ease;
-    }
-
-    .section-header.active .section-toggle {
-      transform: rotate(180deg);
-    }
-
-    .section-content {
-      overflow: hidden;
-      max-height: 0;
-      transition: max-height 0.4s ease, padding 0.4s ease;
-    }
-
-    .section-content.open {
-      padding: 2rem;
-      max-height: none !important;
-    }
-
-    .plot-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-      gap: 2rem;
-      margin: 2rem 0;
-    }
-
-    .plot-item {
-      background: var(--bg-secondary);
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-      transition: all 0.3s ease;
-    }
-
-    .plot-item:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-lg);
-    }
-
-    .plot-header {
-      background: var(--bg-tertiary);
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .plot-title {
-      font-weight: 600;
-      color: var(--text-primary);
-      font-size: 1.1rem;
-    }
-
-    .plot-image {
-      padding: 1rem;
-      text-align: center;
-    }
-
-    .plot-image img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      transition: transform 0.3s ease;
       cursor: pointer;
+      gap: 12px;
+      background: transparent;
+    }
+    .section-title { 
+      font-weight: 600; 
+      color: var(--text); 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      font-size: 1rem 
+    }
+    .badge {
+      display: inline-block;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      border-radius: 999px;
+      color: white;
+      background: var(--success);
+      font-weight: 600;
+    }
+    .section-content {
+      padding: 18px;
+      border-top: 1px solid var(--border);
     }
 
-    .plot-image img:hover {
-      transform: scale(1.02);
-    }
+    .plot-grid { display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); margin-top:12px; }
+    .plot-item { border-radius:12px; overflow:hidden; border:1px solid var(--border); background:var(--muted-surface); box-shadow:none; transition:transform .18s ease; display:flex; flex-direction:column; }
+    .plot-item:hover { transform:translateY(-6px); }
+    .plot-header { padding:10px 12px; background:transparent; border-bottom:1px solid var(--border); flex:0 0 auto; }
+    .plot-title { font-weight:600; color:var(--text); font-size:0.95rem }
+    .plot-image { padding:14px; text-align:center; display:flex; align-items:center; justify-content:center; flex:1 1 auto; min-height:18vh; }
+    .plot-image img { width:100%; height:auto; max-height:70vh; object-fit:contain; border-radius:8px; box-shadow:var(--soft-shadow-2); cursor:pointer }
 
-    table.dataTable {
-      width: 100% !important;
-      border-collapse: separate;
-      border-spacing: 0;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-      background: var(--bg-secondary);
+    table.dataTable { width:100% !important; border-collapse:separate; border-spacing:0; border-radius:8px; overflow:hidden; background:var(--surface) }
+    table.dataTable thead th {
+      background:linear-gradient(90deg, rgba(124,58,237,0.12), rgba(6,182,212,0.06));
+      color:var(--text);
+      font-weight:700;
+      text-transform:uppercase;
+      font-size:0.78rem;
+      padding:12px;
+      border-bottom:1px solid var(--border);
     }
-
-    .dataTables_wrapper {
-      background: var(--bg-secondary);
-      color: var(--text-primary);
-      border-radius: 8px;
-      overflow: hidden;
+    table.dataTable tbody td {
+      padding:12px;
+      border-bottom:1px solid var(--border);
+      color:var(--text);
+      font-size:0.95rem;
     }
+    table.dataTable tbody tr:nth-child(even) td { background:var(--muted-surface); }
+    table.dataTable tbody tr:hover td { background:#FFFFFF; }
 
-    .dataTables_length,
-    .dataTables_filter,
-    .dataTables_info,
-    .dataTables_paginate {
-      color: var(--text-primary) !important;
-      margin: 1rem 0;
-    }
+    #consensusTable.dataTable tbody tr:nth-child(odd) td { background: var(--muted-surface); }
+    #consensusTable.dataTable tbody tr:nth-child(even) td { background: transparent; }
+    #consensusTable.dataTable tbody tr:hover td { background:#FFFFFF; }
 
-    .dataTables_length select,
-    .dataTables_filter input {
-      background: var(--bg-tertiary) !important;
-      color: var(--text-primary) !important;
-      border: 1px solid var(--border) !important;
-      border-radius: 4px;
-      padding: 0.5rem;
+    .dataTables_wrapper .dataTables_filter input,
+    .dataTables_wrapper .dataTables_length select {
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      background:#fff;
+      color:var(--text);
+      font-size:0.9rem;
     }
 
     .dataTables_paginate .paginate_button {
-      background: var(--bg-tertiary) !important;
-      color: var(--text-primary) !important;
-      border: 1px solid var(--border) !important;
-      border-radius: 4px !important;
-      margin: 0 2px;
+      border-radius:8px;
+      border:1px solid var(--border) !important;
+      background:transparent !important;
+      color:var(--text) !important;
+      padding:6px 10px;
+      margin:0 4px;
     }
-
+    .dataTables_paginate .paginate_button.current,
     .dataTables_paginate .paginate_button:hover {
-      background: var(--primary) !important;
-      color: white !important;
-      border-color: var(--primary) !important;
+      background:var(--primary-600) !important;
+      color:white !important;
+      border-color:rgba(109,40,217,0.9) !important;
     }
 
-    .dataTables_paginate .paginate_button.current {
-      background: var(--primary) !important;
-      color: white !important;
-      border-color: var(--primary) !important;
-    }
-
-    table.dataTable thead th {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-      color: white;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      padding: 1rem;
-      border: none;
-    }
-
-    table.dataTable tbody td {
-      padding: 1rem;
-      border-bottom: 1px solid var(--border-light);
-      transition: background-color 0.2s ease;
-      color: var(--text-primary);
-      background: var(--bg-secondary);
-    }
-
-    table.dataTable tbody tr:nth-child(even) td {
-      background: var(--bg-tertiary);
-    }
-
-    table.dataTable tbody tr:hover td {
-      background: linear-gradient(135deg, #1A202C 0%, #2D3748 100%);
-    }
-
-    .algorithm-summary {
-      text-align: center;
-      margin: 2rem 0;
-    }
-
-    .algorithm-summary img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 12px;
-      box-shadow: var(--shadow-md);
+    .algorithm-summary { text-align:center; display:flex; align-items:center; justify-content:center; }
+    .algorithm-summary img.algorithm-summary-img {
+      width:100%;
+      height:auto;
+      max-width: clamp(28rem, 55vw, 90%);
+      max-height:70vh;
+      object-fit:contain;
+      border-radius:8px;
+      box-shadow:var(--soft-shadow-2);
       cursor: pointer;
     }
 
-    .lightbox {
-      display: none;
-      position: fixed;
-      z-index: 9999;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.9);
-      cursor: pointer;
-    }
+    .lightbox { display:none; position:fixed; inset:0; background:rgba(12,16,22,0.8); z-index:9999; align-items:center; justify-content:center; padding:20px; }
+    .lightbox-content { max-width:90vw; max-height:90vh; position:relative; }
+    .lightbox img { max-width:100%; max-height:92vh; border-radius:8px; display:block; }
+    .lightbox-close { position:absolute; right:0px; color:red; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
 
-    .lightbox-content {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      max-width: 90vw;
-      max-height: 90vh;
-      animation: lightboxFadeIn 0.3s ease;
-    }
+    footer { text-align:center; color:var(--muted); font-size:0.9rem; margin-top:12px }
 
-    .lightbox img {
-      max-width: 100%;
-      max-height: 90vh;
-      width: auto;
-      height: auto;
-      border-radius: 8px;
-      box-shadow: var(--shadow-lg);
-      object-fit: contain;
-    }
-
-    .lightbox-close {
-      position: absolute;
-      top: -40px;
-      right: 0;
-      color: white;
-      font-size: 2rem;
-      font-weight: bold;
-      cursor: pointer;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.5);
-      border-radius: 50%;
-      transition: background-color 0.3s ease;
-    }
-
-    .lightbox-close:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    @keyframes lightboxFadeIn {
-      from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-    }
-
-    footer {
-      text-align: center;
-      padding: 2rem;
-      color: var(--text-muted);
-      font-size: 0.9rem;
-    }
-
-    @media (max-width: 768px) {
-      .container {
-        padding: 1rem;
-      }
-      
-      .header h1 {
-        font-size: 2rem;
-      }
-      
-      .stats-grid {
-        grid-template-columns: 1fr;
-      }
-      
-      .plot-grid {
-        grid-template-columns: 1fr;
-      }
-      
-      .section-content.open {
-        padding: 1rem;
-      }
-
-      .lightbox-content {
-        max-width: 95vw;
-        max-height: 95vh;
-      }
-
-      .lightbox img {
-        max-height: 85vh;
-      }
-    }
-
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .section {
-      animation: fadeInUp 0.6s ease-out;
+    @media (max-width:768px) {
+      .container{ padding:14px; margin:14px auto; width:95vw }
+      .header{ flex-direction:column; align-items:flex-start; gap:10px; padding:16px; }
+      .header-meta{ text-align:left; width:100% }
+      .plot-image{ min-height:14vh }
+      .plot-image img{ max-height:60vh }
+      .algorithm-summary img.algorithm-summary-img{ max-width:95%; max-height:60vh; }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>AnomalyViz</h1>
-      <p class="subtitle">Advanced Outlier Detection & Visualization Report</p>
+      <div class="logo">AV</div>
+      <div>
+        <h1>AnomalyViz</h1>
+        <div class="subtitle">Advanced Outlier Detection &amp; Visualization Report</div>
+      </div>
+      <div class="header-meta">
+        <div>Generated by <strong>AnomalyViz</strong></div>
+        <div style="margin-top:6px; color:var(--muted); font-size:0.85rem;">
+          Report: {{ numAlgos }} algorithms • {{ "{:,}".format(df.shape[0]) }} rows
+        </div>
+      </div>
     </div>
-    
+
     <div class="stats-grid">
       <div class="stat-card consensus">
-        <div class="stat-value">{{ consensus|length }}</div>
-        <div class="stat-label">Consensus Outliers</div>
+        <div class="stat-icon icon-consensus"><i class="fa-solid fa-users"></i></div>
+        <div class="stat-body">
+          <div class="stat-value">{{ consensus|length }}</div>
+          <div class="stat-label">Consensus Outliers</div>
+        </div>
       </div>
-      
+
       <div class="stat-card algorithms">
-        <div class="stat-value">{{ numAlgos }}</div>
-        <div class="stat-label">Detection Algorithms</div>
+        <div class="stat-icon icon-algos"><i class="fa-solid fa-brain"></i></div>
+        <div class="stat-body">
+          <div class="stat-value">{{ numAlgos }}</div>
+          <div class="stat-label">Detection Algorithms</div>
+        </div>
       </div>
-      
+
       <div class="stat-card dataset">
-        <div class="stat-value">{{ "{:,}".format(df.shape[0]) }}</div>
-        <div class="stat-label">Data Points</div>
+        <div class="stat-icon icon-dataset"><i class="fa-solid fa-database"></i></div>
+        <div class="stat-body">
+          <div class="stat-value">{{ "{:,}".format(df.shape[0]) }}</div>
+          <div class="stat-label">Data Points</div>
+        </div>
       </div>
-      
+
       <div class="stat-card threshold">
-        <div class="stat-value">{{ "%.0f"|format((conThreshold/numAlgos)*100) }}%</div>
-        <div class="stat-label">Consensus Threshold</div>
+        <div class="stat-icon icon-threshold"><i class="fa-solid fa-percent"></i></div>
+        <div class="stat-body">
+          <div class="stat-value">{{ "%.0f"|format((conThreshold/numAlgos)*100) }}%</div>
+          <div class="stat-label">Consensus Threshold</div>
+        </div>
       </div>
     </div>
 
     <div class="section">
       <div class="section-header">
-        <div class="section-title">Algorithm Performance Summary</div>
-        <div class="section-toggle"><i class="fas fa-chevron-down"></i></div>
+        <div class="section-title"><i class="fa-solid fa-chart-simple" style="color:var(--muted);font-size:0.9rem"></i> Algorithm Performance Summary</div>
+        <div class="section-toggle"><i class="fas fa-chevron-down" style="color:var(--muted)"></i></div>
       </div>
+
       <div class="section-content">
-        <div class="algorithm-summary">
-          <img src="../plots/algorithm_summary.png" alt="Algorithm Summary" class="lightbox-image" />
+        <div class="algorithm-summary" style="margin-bottom:14px;">
+          <img src="../plots/algorithm_summary.png" alt="Algorithm Summary" class="lightbox-image algorithm-summary-img" />
         </div>
+
         <table id="algoTable" class="display">
           <thead>
             <tr>
               <th>Algorithm</th>
-              <th>Outliers Detected</th>
-              <th>Detection Rate</th>
+              <th style="text-align:center">Outliers Detected</th>
+              <th style="text-align:center">Detection Rate</th>
             </tr>
           </thead>
           <tbody>
             {% for algo, mask in results.items() %}
               <tr>
                 <td><strong>{{ algo.upper() }}</strong></td>
-                <td>{{ "{:,}".format(mask.sum()) }}</td>
-                <td>{{ "%.2f"|format((mask.sum() / df.shape[0]) * 100) }}%</td>
+                <td style="text-align:center">{{ "{:,}".format(mask.sum()) }}</td>
+                <td style="text-align:center">{{ "%.2f"|format((mask.sum() / df.shape[0]) * 100) }}%</td>
               </tr>
             {% endfor %}
           </tbody>
@@ -502,37 +367,36 @@
     <div class="section">
       <div class="section-header">
         <div class="section-title">
-          Consensus Outliers Analysis
-          <span style="background: var(--success); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; margin-left: 1rem;">
-            {{ consensus|length }} Found
-          </span>
+          <i class="fa-solid fa-check-double" style="color:var(--muted);font-size:0.9rem"></i> Consensus Outliers Analysis
+          <span class="badge" style="background:var(--primary-600); margin-left:10px;">{{ consensus|length }} Found</span>
         </div>
-        <div class="section-toggle"><i class="fas fa-chevron-down"></i></div>
+        <div class="section-toggle"><i class="fas fa-chevron-down" style="color:var(--muted)"></i></div>
       </div>
+
       <div class="section-content">
         {% if consensus %}
           <table id="consensusTable" class="display">
             <thead>
               <tr>
                 <th>Row Index</th>
-                <th>Algorithm Agreement</th>
-                <th>Consensus Percentage</th>
-                <th>Confidence Level</th>
+                <th style="text-align:center">Algorithm Agreement</th>
+                <th style="text-align:center">Consensus %</th>
+                <th style="text-align:center">Confidence</th>
               </tr>
             </thead>
             <tbody>
               {% for idx, count in consensus.items() %}
                 <tr>
                   <td><strong>#{{ idx }}</strong></td>
-                  <td>{{ count }}/{{ numAlgos }}</td>
-                  <td>{{ "%.0f"|format((count/numAlgos)*100) }}%</td>
-                  <td>
+                  <td style="text-align:center">{{ count }}/{{ numAlgos }}</td>
+                  <td style="text-align:center">{{ "%.0f"|format((count/numAlgos)*100) }}%</td>
+                  <td style="text-align:center">
                     {% if (count/numAlgos) >= 0.8 %}
-                      <span style="color: var(--success); font-weight: 600;">Very High</span>
+                      <span style="color:var(--success); font-weight:600;">Very High</span>
                     {% elif (count/numAlgos) >= 0.6 %}
-                      <span style="color: var(--warning); font-weight: 600;">High</span>
+                      <span style="color:var(--warning); font-weight:600;">High</span>
                     {% else %}
-                      <span style="color: var(--secondary); font-weight: 600;">Moderate</span>
+                      <span style="color:var(--muted); font-weight:600;">Moderate</span>
                     {% endif %}
                   </td>
                 </tr>
@@ -540,12 +404,12 @@
             </tbody>
           </table>
         {% else %}
-          <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-            <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-            <h3>No Consensus Outliers Found</h3>
-            <p>No data points met the consensus threshold of {{ conThreshold }}+ algorithms.</p>
+          <div style="text-align:center; padding:28px; color:var(--muted);">
+            <i class="fas fa-search" style="font-size:2.6rem; margin-bottom:10px; opacity:0.6;"></i>
+            <h3 style="margin:0 0 8px 0; color:var(--text)">No Consensus Outliers Found</h3>
+            <p style="margin:0 0 10px 0;">No data points met the consensus threshold of {{ conThreshold }}+ algorithms.</p>
             {% if maxAgreement > 1 %}
-              <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-tertiary); border-radius: 8px;">
+              <div style="margin-top:12px; padding:12px; background:var(--muted-surface); border-radius:10px; display:inline-block;">
                 <strong>Highest Agreement:</strong> {{ maxAgreement }} algorithms agreed on {{ maxAgreeCount }} point(s)
               </div>
             {% endif %}
@@ -556,27 +420,24 @@
 
     <div class="section">
       <div class="section-header">
-        <div class="section-title">
-          Visual Analysis & Projections
-        </div>
-        <div class="section-toggle"><i class="fas fa-chevron-down"></i></div>
+        <div class="section-title"><i class="fa-solid fa-eye" style="color:var(--muted);font-size:0.9rem"></i> Visual Analysis &amp; Projections</div>
+        <div class="section-toggle"><i class="fas fa-chevron-down" style="color:var(--muted)"></i></div>
       </div>
+
       <div class="section-content">
-        <h3 style="margin-bottom: 1.5rem; color: var(--text-primary);">Consensus Outliers Visualization</h3>
+        <h3 style="margin:0 0 12px 0; color:var(--text); font-size:1rem">Consensus Outliers Visualization</h3>
+
         <div class="plot-grid{% if df.shape[1] < 3 %} single-plot{% endif %}">
           <div class="plot-item">
-            <div class="plot-header">
-              <div class="plot-title">2D Principal Component Analysis</div>
-            </div>
+            <div class="plot-header"><div class="plot-title">2D Principal Component Analysis</div></div>
             <div class="plot-image">
               <img src="../plots/pca_consensus_2d.png" alt="Consensus PCA 2D" class="lightbox-image" />
             </div>
           </div>
+
           {% if df.shape[1] >= 3 %}
           <div class="plot-item">
-            <div class="plot-header">
-              <div class="plot-title">3D Principal Component Analysis</div>
-            </div>
+            <div class="plot-header"><div class="plot-title">3D Principal Component Analysis</div></div>
             <div class="plot-image">
               <img src="../plots/pca_consensus_3d.png" alt="Consensus PCA 3D" class="lightbox-image" />
             </div>
@@ -584,13 +445,11 @@
           {% endif %}
         </div>
 
-        <h3 style="margin: 2rem 0 1.5rem 0; color: var(--text-primary);">Individual Algorithm Results</h3>
+        <h3 style="margin:20px 0 12px 0; color:var(--text); font-size:1rem">Individual Algorithm Results</h3>
         <div class="plot-grid">
           {% for algo, plot in outlierPlots.items() %}
           <div class="plot-item">
-            <div class="plot-header">
-              <div class="plot-title">{{ algo.upper() }} Detection</div>
-            </div>
+            <div class="plot-header"><div class="plot-title">{{ algo.upper() }} Detection</div></div>
             <div class="plot-image">
               <img src="{{ plot }}" alt="{{ algo }} PCA Analysis" class="lightbox-image" />
             </div>
@@ -601,18 +460,13 @@
     </div>
 
     <footer>
-      <p>
-        Generated by <strong>AnomalyViz</strong> - Advanced Outlier Detection System
-      </p>
-      <p style="margin-top: 0.5rem; font-size: 0.8rem;">
-        Report generated with {{ numAlgos }} detection algorithms on {{ "{:,}".format(df.shape[0]) }} data points
-      </p>
+      <div>Report generated with <strong>{{ numAlgos }}</strong> detection algorithms on <strong>{{ "{:,}".format(df.shape[0]) }}</strong> data points</div>
     </footer>
   </div>
 
   <div id="lightbox" class="lightbox">
     <div class="lightbox-content">
-      <span class="lightbox-close">&times;</span>
+      <span class="lightbox-close">X</span>
       <img id="lightbox-img" src="" alt="">
     </div>
   </div>
@@ -626,12 +480,8 @@
         info: false,
         searching: false,
         order: [[1, 'desc']],
-        columnDefs: [
-          {
-            targets: [1, 2],
-            className: 'text-center'
-          }
-        ]
+        columnDefs: [{ targets: [1,2], className: 'text-center' }],
+        language: { zeroRecords: "No algorithms found" }
       });
 
       $('#consensusTable').DataTable({
@@ -641,66 +491,38 @@
         info: true,
         searching: true,
         order: [[2, 'desc']],
-        columnDefs: [
-          {
-            targets: [1, 2],
-            className: 'text-center'
-          }
-        ],
+        columnDefs: [{ targets: [1,2], className: 'text-center' }],
         dom: '<"top"lf>rt<"bottom"ip><"clear">'
       });
 
       $('.section-header').on('click', function() {
-        const $header = $(this);
-        const $content = $header.next('.section-content');
-        const $section = $header.parent('.section');
-
-        $header.toggleClass('active');
-        if ($content.hasClass('open')) {
-          $content.removeClass('open').css('max-height', '0');
+        const $h = $(this);
+        const $c = $h.next('.section-content');
+        $h.find('.fa-chevron-down').toggleClass('rotated');
+        if ($c.is(':visible')) {
+          $c.slideUp(180);
         } else {
-          $content.addClass('open').css('max-height', $content.prop('scrollHeight') + 'px');
-          setTimeout(function() {
-            if ($content.find('table').length > 0) {
-              $content.css('max-height', 'none');
-            }
-          }, 400);
+          $c.slideDown(220);
         }
       });
 
-      $('.section:first-child .section-header').trigger('click');
+      $('.section').slice(0,2).each(function(){ $(this).find('.section-header').trigger('click'); });
 
       $('.lightbox-image').on('click', function() {
         const src = $(this).attr('src');
-        const alt = $(this).attr('alt');
+        const alt = $(this).attr('alt') || '';
         $('#lightbox-img').attr('src', src).attr('alt', alt);
-        $('#lightbox').fadeIn(300);
+        $('#lightbox').fadeIn(200).css('display','flex');
       });
 
       $('#lightbox').on('click', function(e) {
         if (e.target === this || $(e.target).hasClass('lightbox-close')) {
-          $(this).fadeOut(300);
+          $(this).fadeOut(180);
         }
       });
 
       $(document).on('keydown', function(e) {
-        if (e.key === 'Escape') {
-          $('#lightbox').fadeOut(300);
-        }
-      });
-
-      $('.section').each(function(index) {
-        $(this).css('animation-delay', (index * 0.1) + 's');
-      });
-
-      $('a[href^="#"]').on('click', function(e) {
-        e.preventDefault();
-        const target = $($(this).attr('href'));
-        if (target.length) {
-          $('html, body').animate({
-            scrollTop: target.offset().top - 100
-          }, 500);
-        }
+        if (e.key === 'Escape') { $('#lightbox').fadeOut(180); }
       });
     });
   </script>
