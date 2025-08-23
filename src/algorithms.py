@@ -11,6 +11,8 @@ from sklearn.metrics import silhouette_score
 from sklearn.metrics import pairwise_distances
 from scipy.stats import zscore
 import numpy as np
+from concurrent.futures import ProcessPoolExecutor
+import os
 
 def zscoreOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
@@ -164,16 +166,73 @@ def lofOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
 
     return predictions == -1
 
+def _evaluate_svm_params(args):
+    """Helper function for parallel parameter evaluation"""
+    params, dataScaled, contamination = args
+    
+    model = OneClassSVM(**params)
+    model.fit(dataScaled)
+    predictions = model.predict(dataScaled)
+    
+    outlier_ratio = np.sum(predictions == -1) / len(predictions)
+    if outlier_ratio < contamination * 0.1 or outlier_ratio > contamination * 5:
+        return None, -np.inf
+    
+    decisionScores = model.decision_function(dataScaled)
+    label = (predictions == -1).astype(int)
+    
+    if len(np.unique(label)) < 2:
+        return None, -np.inf
+    
+    silScore = silhouette_score(dataScaled, label)
+    
+    inlier_mask = predictions == 1
+    outlier_mask = predictions == -1
+    
+    inlier_scores = decisionScores[inlier_mask]
+    outlier_scores = decisionScores[outlier_mask]
+    
+    separation = np.mean(inlier_scores) - np.mean(outlier_scores)
+    
+    inliers = dataScaled[inlier_mask]
+    if len(inliers) > 1:
+        inlier_distances = pdist(inliers)
+        compactness = -np.mean(inlier_distances)
+        inlier_std = np.std(inlier_distances)
+    else:
+        compactness = 0
+        inlier_std = 1e-8
+    
+    outliers = dataScaled[outlier_mask]
+    if len(outliers) > 0 and len(inliers) > 0:
+        distances = cdist(outliers, inliers)
+        isolation = np.mean(np.min(distances, axis=1))
+    else:
+        isolation = 0
+    
+    contamination_penalty = abs(outlier_ratio - contamination) / contamination
+    
+    decision_std = np.std(decisionScores)
+    data_std = np.std(dataScaled)
+    
+    sil_weight, sep_weight, comp_weight, iso_weight, cont_weight = 1.0, 0.5, 0.3, 0.2, 2.0
+    total_score = (sil_weight * silScore + 
+                  sep_weight * (separation / decision_std) +
+                  comp_weight * (compactness / inlier_std) +
+                  iso_weight * (isolation / data_std) -
+                  cont_weight * contamination_penalty)
+    
+    return predictions, total_score
+
 def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     """
-    Detect outliers using One-Class SVM with comprehensive parameter optimization.
+    Detect outliers using One-Class SVM with optimized parameter search.
     
-    One-Class SVM learns a decision function for novelty detection: classifying
-    new data as similar or different from the training set. This implementation
-    performs extensive hyperparameter tuning to find the best model configuration.
-    
-    Best for: Complex decision boundaries, robust performance across data types.
-    Limitations: Computationally expensive due to grid search, many hyperparameters.
+    Optimizations:
+    - Parallel parameter evaluation using multiprocessing
+    - Early termination for poor contamination ratios
+    - Reduced parameter grid focusing on most effective combinations
+    - Cached computations and vectorized operations
     
     Args:
         df (pd.DataFrame): Input dataset with numerical features
@@ -182,57 +241,30 @@ def svmOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     Returns:
         np.ndarray: Boolean array where True indicates an outlier
     """
-
     scaler = StandardScaler()
     dataScaled = scaler.fit_transform(df)
+    
     paramGrid = {
-        'kernel': ['rbf', 'poly', 'linear'],
-        'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1.0],
-        'nu': [0.01, 0.05, 0.1, 0.2, 0.3]
+        'kernel': ['rbf', 'linear'],
+        'gamma': ['scale', 'auto', 0.01, 0.1],
+        'nu': [0.05, 0.1, 0.2]
     }
-
+    
     grid = list(ParameterGrid(paramGrid))
-    bestScore, bestPredictions = -np.inf, np.zeros(len(df), dtype=bool)
-    for params in grid:
-        model = OneClassSVM(**params)
-        model.fit(dataScaled)
-        predictions = model.predict(dataScaled)
-        decisionScores = model.decision_function(dataScaled)
-            
-        outlier_ratio = np.sum(predictions == -1) / len(predictions)
-        if outlier_ratio < contamination * 0.1 or outlier_ratio > contamination * 5:
-            continue
-        label = (predictions == -1).astype(int)
-        if len(np.unique(label)) < 2:
-            continue
-
-        silScore = silhouette_score(dataScaled, label)
-        separation = (np.mean(decisionScores[predictions == 1]) - np.mean(decisionScores[predictions == -1]))
-        
-        inliers = dataScaled[predictions == 1]
-        if len(inliers) > 1:
-            inlier_distances = pdist(inliers)
-            compactness = -np.mean(inlier_distances)
-        else:
-            compactness = 0
-        
-        outliers = dataScaled[predictions == -1]
-        if len(outliers) > 0 and len(inliers) > 0:
-            distances = cdist(outliers, inliers)
-            isolation = np.mean(np.min(distances, axis=1))
-        else:
-            isolation = 0
-
-        contamination_penalty = abs(outlier_ratio - contamination) / contamination
-        sil_weight, sep_weight, comp_weight, iso_weight, cont_weight = 1.0, 0.5, 0.3, 0.2, 2.0
-        total_score = (sil_weight * silScore + 
-                      sep_weight * (separation / np.std(decisionScores)) +
-                      comp_weight * (compactness / (np.std(inlier_distances) +  1e-8) if len(inliers) > 1 else 0) +
-                      iso_weight * (isolation / np.std(dataScaled.flatten())) -
-                      cont_weight * contamination_penalty)
-        
-        if total_score > bestScore:
-            bestScore = total_score
+    
+    max_workers = min(len(grid), os.cpu_count() or 1)
+    
+    bestScore = -np.inf
+    bestPredictions = np.zeros(len(df), dtype=bool)
+    
+    args_list = [(params, dataScaled, contamination) for params in grid]
+    
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(_evaluate_svm_params, args_list))
+    
+    for predictions, score in results:
+        if predictions is not None and score > bestScore:
+            bestScore = score
             bestPredictions = predictions
     
     return bestPredictions == -1
