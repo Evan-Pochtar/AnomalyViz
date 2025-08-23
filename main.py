@@ -1,13 +1,26 @@
 import argparse
 import pandas as pd
 import sys
+import numpy as np
+import os
 from src.html import generateHTML
 from src.report import printReport
 from src.core import runAll, aggregate
 from src.data import clean
 from src.contamination import estimateOutlierContamination
 
-def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None, consensusThreshold=None, columns=None):
+def getUniquePath(path: str) -> str:
+    base, ext = os.path.splitext(path)
+    counter = 1
+    candidate = path
+    while os.path.exists(candidate):
+        candidate = f"{base}({counter}){ext}"
+        counter += 1
+    if candidate != path:
+        print(f"File exists, using new file name: {candidate}")
+    return candidate
+
+def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None, consensusThreshold=None, columns=None, removeOutliers=False, output=None):
     """
     Execute the complete outlier detection pipeline on a CSV dataset.
     
@@ -59,20 +72,42 @@ def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None, c
     results = runAll(df_clean, algorithms, contamination)
     agreement = aggregate(results['results'])
     
-    num_algorithms = len(results['results'])
-    if consensusThreshold is not None:
+    numAlgos = len(results['results'])
+    if consensusThreshold is None:
+        consensusThreshold = max(1, int(np.ceil(numAlgos * 0.5)))
+        print(f"Using default consensus threshold: {consensusThreshold}")
+    else:
         if consensusThreshold < 1:
             print("Error: Consensus threshold must be at least 1.")
             sys.exit(1)
-        if consensusThreshold > num_algorithms:
-            print(f"Error: Consensus threshold ({consensusThreshold}) cannot exceed the number of algorithms ({num_algorithms}).")
+        if consensusThreshold > len(results):
+            print(f"Error: Consensus threshold ({consensusThreshold}) cannot exceed the number of algorithms ({numAlgos}).")
             sys.exit(1)
-    
+
     if ConsoleReport:
         printReport(results, agreement, consensusThreshold)
    
     if HTMLreport:
         generateHTML(df_clean, results['results'], agreement, consensusThreshold=consensusThreshold)
+
+    if removeOutliers:
+        originalIndexList = list(df_clean.index)
+        keepIndexLabels = [originalIndexList[i] for i in range(len(originalIndexList)) if agreement.get(i, 0) < consensusThreshold]
+        removedCount = len(originalIndexList) - len(keepIndexLabels)
+
+        print(f"Removing {removedCount} rows flagged by consensus (threshold={consensusThreshold}).")
+        df_cleaned = df_clean.loc[keepIndexLabels].copy()
+        filteredResults = {}
+        for alg, series in results['results'].items():
+            filteredResults[alg] = series.loc[keepIndexLabels]
+
+        results['results'] = filteredResults
+        agreement = aggregate(results['results'])
+        outPath = output if output else file
+        outPath = getUniquePath(outPath)
+
+        df_cleaned.to_csv(outPath, index=False)
+        print(f"Wrote cleaned CSV to: {outPath}")
 
 if __name__ == "__main__":
     """
@@ -106,6 +141,8 @@ if __name__ == "__main__":
     parser.add_argument("--contamination", type=float, required=False, help="Estimated contamination rate for outlier detection. If not specified, it will be estimated from the data. Must be between 0 and 0.5.")
     parser.add_argument("--consensusThreshold", type=int, required=False, help="Number of algorithms that must agree for a consensus outlier. Must be between 1 and the total number of algorithms. If not specified, defaults to 50%% of algorithms (rounded up).")
     parser.add_argument("--columns", type=str, nargs='+', required=False, help="Subset of columns to include in outlier detection. If not specified, all columns are used.")
+    parser.add_argument("--removeOutliers", action='store_true', required=False, help="Automatically remove consensus outliers and write cleaned CSV.")
+    parser.add_argument("--output", type=str, required=False, help="Path to write cleaned CSV when --removeOutliers is used.")
    
     args = parser.parse_args()
-    main(args.file, args.NoHtmlReport, args.NoConsoleReport, args.algorithms, args.contamination, args.consensusThreshold)
+    main(args.file, args.NoHtmlReport, args.NoConsoleReport, args.algorithms, args.contamination, args.consensusThreshold, args.columns, args.removeOutliers, args.output)

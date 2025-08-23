@@ -81,6 +81,9 @@ python main.py --contamination 0.05
 - `--consensusThreshold` (optional): Number of algorithms that must agree for a consensus outlier.
 - `--NoHtmlReport` (optional): Disable HTML report generation
 - `--NoConsoleReport` (optional): Disable console text report
+- `--columns` (optional): Subset of columns to include in outlier detection. If not specified, all columns are used.
+- `--removeOutliers` (optional): Automatically remove consensus outliers and write cleaned CSV.
+- `--output` (optional): Path to write cleaned CSV when --removeOutliers is used. Defaults to where the original CSV file was located.
 
 ### `estimateOutlierContamination`
 
