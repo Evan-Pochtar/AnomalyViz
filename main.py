@@ -7,7 +7,7 @@ from src.core import runAll, aggregate
 from src.data import clean
 from src.contamination import estimateOutlierContamination
 
-def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None, consensusThreshold=None):
+def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None, consensusThreshold=None, columns=None):
     """
     Execute the complete outlier detection pipeline on a CSV dataset.
     
@@ -34,6 +34,13 @@ def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None, c
 
     print(f"Loading dataset from {file}...")
     df = pd.read_csv(file)
+
+    if columns:
+        missing = [c for c in columns if c not in df.columns]
+        if missing:
+            print(f"Error: Columns not found in dataset: {missing}")
+            sys.exit(1)
+        df = df[columns]
    
     try:
         df_clean = clean(df)
@@ -98,6 +105,7 @@ if __name__ == "__main__":
                        help="Select specific algorithms to run. If not specified, all algorithms will be run.")
     parser.add_argument("--contamination", type=float, required=False, help="Estimated contamination rate for outlier detection. If not specified, it will be estimated from the data. Must be between 0 and 0.5.")
     parser.add_argument("--consensusThreshold", type=int, required=False, help="Number of algorithms that must agree for a consensus outlier. Must be between 1 and the total number of algorithms. If not specified, defaults to 50%% of algorithms (rounded up).")
+    parser.add_argument("--columns", type=str, nargs='+', required=False, help="Subset of columns to include in outlier detection. If not specified, all columns are used.")
    
     args = parser.parse_args()
     main(args.file, args.NoHtmlReport, args.NoConsoleReport, args.algorithms, args.contamination, args.consensusThreshold)
