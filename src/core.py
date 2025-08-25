@@ -28,7 +28,7 @@ ALGORITHM_MAP = {
     'hbos': hbosOutliers
 }
 
-def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float = 0.00) -> dict:
+def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float = 0.00, progress_callback=None) -> dict:
     """
     Execute multiple outlier detection algorithms on a dataset with comprehensive reporting.
     
@@ -57,20 +57,26 @@ def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float 
     if not algorithms:
         algorithms = list(ALGORITHM_MAP.keys())
     
-    # Validate algorithms
     invalid = [alg for alg in algorithms if alg not in ALGORITHM_MAP]
     if invalid:
         raise ValueError(f"Invalid algorithm(s): {invalid}. "
                         f"Available algorithms: {list(ALGORITHM_MAP.keys())}")
     
-    # Validate contamination
     if contamination < 0 or contamination > 0.5:
         raise ValueError("Contamination must be between 0.0 and 0.5")
 
     results, timings, statistics, failed = {}, {}, {}, []
     totalStartTime = time.time()
+    totalAlgos = len(algorithms)
     
     for i, algorithm in enumerate(algorithms, 1):
+        remaining = [a for a in algorithms[i:]]
+        if progress_callback:
+            try:
+                progress_callback("algo_start", i, totalAlgos, algorithm, {"remaining": remaining})
+            except Exception:
+                pass
+
         try:
             startTime = time.time()
             outlier_mask = ALGORITHM_MAP[algorithm](df, contamination)
@@ -92,6 +98,12 @@ def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float 
                 'execution_time': execution_time
             }
             
+            if progress_callback:
+                try:
+                    progress_callback("algo_done", i, totalAlgos, algorithm, {"remaining": remaining})
+                except Exception:
+                    pass
+
         except Exception as e:
             print(e)
             failed.append(algorithm)
@@ -100,6 +112,11 @@ def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float 
                 'error': str(e),
                 'execution_time': None
             }
+            if progress_callback:
+                try:
+                    progress_callback("algo_done", i, totalAlgos, algorithm, {"remaining": remaining})
+                except Exception:
+                    pass
     
     total_endTime = time.time()
     total_execution_time = total_endTime - totalStartTime
@@ -137,6 +154,12 @@ def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float 
     
     if failed:
         print(f"- Failed algorithms: {', '.join([alg.upper() for alg in failed])}")
+
+    if progress_callback:
+        try:
+            progress_callback("algorithms_complete", totalAlgos, totalAlgos, "all")
+        except Exception:
+            pass
     
     return {
         'results': results,

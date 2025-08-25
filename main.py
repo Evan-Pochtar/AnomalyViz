@@ -20,6 +20,19 @@ def getUniquePath(path: str) -> str:
         print(f"File exists, using new file name: {candidate}")
     return candidate
 
+def PrintProgressBar(prefix: str, completed: int, total: int, width: int = 40, suffix: str = "") -> None:
+    if not hasattr(PrintProgressBar, "_last_len"):
+        PrintProgressBar._last_len = 0
+    pct = 0 if total == 0 else int((completed / total) * 100)
+    filled = int(width * completed // max(1, total))
+    bar = "[" + ("#" * filled) + ("-" * (width - filled)) + f"] {pct:3d}%"
+    line = f"{prefix} {bar} {suffix}"
+    pad = " " * max(0, PrintProgressBar._last_len - len(line))
+    sys.stdout.write("\r" + line + pad)
+    sys.stdout.flush()
+    PrintProgressBar._last_len = len(line)
+
+
 def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None, consensusThreshold=None, columns=None, removeOutliers=False, output=None):
     """
     Execute the complete outlier detection pipeline on a CSV dataset.
@@ -69,7 +82,27 @@ def main(file, HTMLreport, ConsoleReport, algorithms=None, contamination=None, c
         sys.exit(1)
         
     print("Running outlier detection algorithms...")
-    results = runAll(df_clean, algorithms, contamination)
+
+    if not algorithms:
+        from src.core import ALGORITHM_MAP
+        algorithms = list(ALGORITHM_MAP.keys())
+
+    totalAlgos = len(algorithms)
+
+    def LocalProgressCallback(kind, doneCount, totalCount, currentName="", extra=None):
+        if kind == "algo_start":
+            completed = doneCount - 1
+            PrintProgressBar("Algorithms", completed, totalAlgos, suffix=f"Running: {currentName}")
+        elif kind == "algo_done":
+            completed = doneCount
+            remaining = extra.get("remaining", []) if extra else []
+            remText = f" | Remaining: {', '.join(remaining[:5])}" if remaining else ""
+            PrintProgressBar("Algorithms", completed, totalAlgos, suffix=f"Completed: {currentName}{remText}")
+        elif kind == "algorithms_complete":
+            PrintProgressBar("Algorithms", totalAlgos, totalAlgos, suffix="All algorithms finished")
+
+    results = runAll(df_clean, algorithms, contamination, progress_callback=LocalProgressCallback)
+    print("")  # newline after progress bar
     agreement = aggregate(results['results'])
     
     numAlgos = len(results['results'])
