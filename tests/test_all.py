@@ -2,12 +2,10 @@ import pytest
 import numpy as np
 import pandas as pd
 import time
-import warnings
 import tempfile
 import os
 import sys
 from collections import defaultdict
-from unittest.mock import patch, MagicMock
 import matplotlib
 
 matplotlib.use('Agg')
@@ -298,7 +296,7 @@ class TestIntegration:
         contamination = estimateOutlierContamination(df_clean)
         results = runAll(df_clean, contamination=contamination)
         agreement = aggregate(results['results'])
-        assert len(results['results']) == 10
+        assert len(results['results']) == 12
         assert len(agreement) >= 25
         output_path = os.path.join(temp_dir, 'medium_test.html')
         generateHTML(df_clean, results['results'], agreement, outputPath=output_path)

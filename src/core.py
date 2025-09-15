@@ -12,7 +12,9 @@ from src.algorithms import (
     knnOutliers,
     mcdOutliers,
     copodOutliers,
-    hbosOutliers
+    hbosOutliers,
+    inneOutliers,
+    ecodOutliers
 )
 
 ALGORITHM_MAP = {
@@ -25,7 +27,9 @@ ALGORITHM_MAP = {
     'knn': knnOutliers,
     'mcd': mcdOutliers,
     'copod': copodOutliers,
-    'hbos': hbosOutliers
+    'hbos': hbosOutliers,
+    'inne': inneOutliers,
+    'ecod': ecodOutliers
 }
 
 def runAll(df: pd.DataFrame, algorithms: list[str] = None, contamination: float = 0.00, progress_callback=None) -> dict:

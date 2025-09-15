@@ -27,6 +27,8 @@ AnomalyViz is a Python-based outlier detection system that runs multiple anomaly
 8. **Minimum Covariance Determinant (MCD)** - Robust covariance estimation
 9. **Copula-Based Outlier Detection (COPOD)** - Detects outliers based on their empirical copula values
 10. **Histogram-Based Outlier Score (HBOS)** - Histogram-based anomaly scoring
+11. **Empirical Cumulative Distribution Outlier Detection (ECOD)** - Distribution Function scoring
+12. **Nearest Neighbor Ensemble (iNNE)** - Isolates outliers with random subspaces and nearest neighbor distances
 
 ## Installation
 

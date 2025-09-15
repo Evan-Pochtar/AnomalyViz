@@ -512,3 +512,101 @@ def hbosOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
     threshold = np.percentile(scores, threshold_percentile)
     
     return scores > threshold
+
+def inneOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using Isolation using Nearest Neighbor Ensemble (iNNE).
+    
+    iNNE isolates outliers by building random subspaces and using k-nearest
+    neighbor distances within these subspaces. Outliers typically have larger
+    distances to their neighbors across multiple random subspaces.
+    
+    Best for: High-dimensional data, ensemble robustness, computational efficiency.
+    Limitations: Parameter sensitive, may struggle with uniform distributions.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+    X = StandardScaler().fit_transform(df.values)
+    n_samples, n_features = X.shape
+    
+    if n_samples < 5:
+        return np.zeros(n_samples, dtype=bool)
+    
+    n_estimators = max(50, min(200, int(np.log2(n_samples) * 10)))
+    max_features = max(1, min(n_features, int(np.sqrt(n_features))))
+    k = max(1, min(10, int(np.log(n_samples))))
+    
+    scores = np.zeros(n_samples)
+    
+    for _ in range(n_estimators):
+        selected_features = np.random.choice(n_features, max_features, replace=False)
+        X_sub = X[:, selected_features]
+        
+        if n_samples > 256:
+            sample_size = min(256, n_samples)
+            sample_idx = np.random.choice(n_samples, sample_size, replace=False)
+            X_train = X_sub[sample_idx]
+
+            knn = NearestNeighbors(n_neighbors=min(k, len(X_train) - 1))
+            knn.fit(X_train)
+            distances, _ = knn.kneighbors(X_sub)
+            knn_scores = np.mean(distances, axis=1)
+        else:
+            knn = NearestNeighbors(n_neighbors=min(k, n_samples - 1))
+            knn.fit(X_sub)
+            distances, _ = knn.kneighbors(X_sub)
+            knn_scores = np.mean(distances, axis=1)
+        
+        scores += knn_scores
+    
+    scores /= n_estimators
+    threshold = np.percentile(scores, (1 - contamination) * 100)
+    return scores > threshold
+
+def ecodOutliers(df: pd.DataFrame, contamination: float) -> np.ndarray:
+    """
+    Detect outliers using Empirical Cumulative Distribution Outlier Detection (ECOD).
+    
+    ECOD uses empirical cumulative distribution functions to model the marginal
+    distributions of features, then combines them to detect outliers. It's 
+    parameter-free, interpretable, and works well with mixed distributions.
+    
+    Best for: Mixed distributions, parameter-free, very fast, interpretable.
+    Limitations: Assumes feature independence, may miss multivariate outliers.
+    
+    Args:
+        df (pd.DataFrame): Input dataset with numerical features
+        contamination (float): Expected proportion of outliers (0.0 to 1.0)
+        
+    Returns:
+        np.ndarray: Boolean array where True indicates an outlier
+    """
+    X = df.values
+    n_samples, n_features = X.shape
+    
+    if n_samples == 0:
+        return np.array([], dtype=bool)
+    
+    ecdf_scores = np.zeros((n_samples, n_features))
+    
+    for i in range(n_features):
+        feature_values = X[:, i]
+        sorted_values = np.sort(feature_values)
+        ranks = np.searchsorted(sorted_values, feature_values, side='right')
+
+        ecdf_values = ranks / n_samples
+        left_tail = ecdf_values
+        right_tail = 1 - ecdf_values
+        tail_prob = np.minimum(left_tail, right_tail)
+
+        ecdf_scores[:, i] = -np.log(tail_prob + 1e-10)
+    
+    combined_scores = np.exp(np.mean(ecdf_scores, axis=1))
+    threshold = np.percentile(combined_scores, (1 - contamination) * 100)
+    
+    return combined_scores > threshold
