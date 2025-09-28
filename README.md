@@ -33,12 +33,14 @@ AnomalyViz is a Python-based outlier detection system that runs multiple anomaly
 ## Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/Evan-Pochtar/AnomalyViz.git
 cd AnomalyViz
 ```
 
 2. Install required dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -48,6 +50,7 @@ pip install -r requirements.txt
 ### Basic Usage
 
 Run all algorithms on your CSV file:
+
 ```bash
 python main.py --file path/to/your/data.csv
 ```
@@ -55,21 +58,25 @@ python main.py --file path/to/your/data.csv
 ### Advanced Options
 
 **Select specific algorithms:**
+
 ```bash
 python main.py --file data.csv --algorithms zscore isoforest lof
 ```
 
 **Disable HTML and console report:**
+
 ```bash
 python main.py --file data.csv --NoHtmlReport --NoConsoleReport
 ```
 
 **Require a specific amount of consensus algorithms:**
+
 ```bash
 python main.py --file data.csv --consensusThreshold 5
 ```
 
 **Run with specific outlier percentage:**
+
 ```bash
 python main.py --contamination 0.05
 ```
@@ -101,6 +108,7 @@ If no contamination is set, `estimateOutlierContamination` estimates the proport
 ## Output
 
 ### Sample Console Report
+
 ```
 ===== Outlier Detection Report =====
 [Algorithm: ZSCORE] Detected 27 outliers.
@@ -115,11 +123,13 @@ Total consensus outliers: 25
 ```
 
 ### HTML Report
+
 - Consensus analysis with detailed breakdowns
 - Data distribution plots
 - Algorithm comparison charts
 
 ### Generated Files
+
 - `plots/`: Individual matplotlib plots for each algorithm
 - `report/AnomalyReport.html`: Comprehensive HTML report with interactive elements
 
@@ -134,11 +144,13 @@ AnomalyViz uses a consensus-based approach to identify the most reliable outlier
 ## Testing
 
 Run the test suite:
+
 ```bash
 pytest
 ```
 
 Or run a specific test file:
+
 ```bash
 pytest tests/test_all.py
 ```
@@ -146,6 +158,7 @@ pytest tests/test_all.py
 ## Sample Data Generation
 
 Generate test data for experimentation:
+
 ```python
 from src.createData import createSampleDataset
 createSampleDataset(n_samples=1000, n_features=10, contamination=0.05)
